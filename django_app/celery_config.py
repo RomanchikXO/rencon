@@ -4,7 +4,7 @@ import os
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_app.settings')
 
-app = Celery('pearhome')
+app = Celery('rencon')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
