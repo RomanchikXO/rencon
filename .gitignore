@@ -1,0 +1,14 @@
+/.venv/
+/.env
+
+# Python
+__pycache__/
+
+# IDEs and tools
+.idea/
+/credentials.json
+/static/
+/tests_some.py
+/myapp/migrations/
+/main/migrations/
+/celerybeat-schedule

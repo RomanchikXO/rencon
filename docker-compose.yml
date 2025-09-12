@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6380:6379"
+
+  db:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+#  telegram_bot:
+#    build: .
+#    container_name: telegram_bot
+#    depends_on:
+#      - db
+#    command: [ "python", "BOT/main.py" ]
+#    volumes:
+#      - .:/app
+#    environment:
+#      POSTGRES_USER: ${POSTGRES_USER}
+#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#      POSTGRES_DB: ${POSTGRES_DB}
+#      POSTGRES_HOST: db
+#      POSTGRES_PORT: 5432
+#      PYTHONPATH: /app
+#
+#  playwright_cookie_updater:
+#    build: .
+#    container_name: playwright_cookie_updater
+#    depends_on:
+#      - db
+#    command: [ "python", "cookie_updater/main.py" ]
+#    volumes:
+#      - .:/app
+#    environment:
+#      POSTGRES_USER: ${POSTGRES_USER}
+#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#      POSTGRES_DB: ${POSTGRES_DB}
+#      POSTGRES_HOST: db
+#      POSTGRES_PORT: 5432
+#      PYTHONPATH: /app
+#
+#  playwright_discount_updater:
+#    build: .
+#    container_name: playwright_discount_updater
+#    depends_on:
+#      - db
+#    command: [ "python", "cookie_updater/main_discount.py" ]
+#    volumes:
+#      - .:/app
+#    environment:
+#      POSTGRES_USER: ${POSTGRES_USER}
+#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#      POSTGRES_DB: ${POSTGRES_DB}
+#      POSTGRES_HOST: db
+#      POSTGRES_PORT: 5432
+#      PYTHONPATH: /app
+#
+  django:
+    build: .
+    container_name: django_app
+    command: >
+      sh -c "
+        python wait_for_db.py && 
+        python manage.py makemigrations --noinput && 
+        python manage.py migrate --noinput && 
+        python manage.py shell -c \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='${DJANGO_SUPERUSER_USERNAME}').exists() or User.objects.create_superuser('${DJANGO_SUPERUSER_USERNAME}', '${DJANGO_SUPERUSER_EMAIL}', '${DJANGO_SUPERUSER_PASSWORD}')\" && 
+        gunicorn django_app.wsgi:application --bind 0.0.0.0:8000
+      "
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+      PYTHONPATH: /app
+
+  worker:
+    build: .
+    volumes:
+      - .:/app
+      - /etc/localtime:/etc/localtime:ro
+    container_name: celery_worker
+    restart: always
+    depends_on:
+      - redis
+    command: ["celery", "-A", "django_app.celery_config", "worker", "--loglevel=info", "--pidfile="]
+
+  beat:
+    build: .
+    volumes:
+      - .:/app
+      - /etc/localtime:/etc/localtime:ro
+    container_name: celery_beat
+    restart: always
+    depends_on:
+      - redis
+    command: ["celery", "-A", "django_app.celery_config", "beat", "--loglevel=info", "--pidfile=", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+
+volumes:
+  pgdata:
