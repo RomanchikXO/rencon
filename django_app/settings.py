@@ -35,7 +35,7 @@ else:
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_TRUSTED_ORIGINS = [
-    "https://wbautopro.ru",
+    "http://renconpro.ru",
 ]
 
 STATIC_URL = '/static/'
