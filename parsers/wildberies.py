@@ -559,7 +559,7 @@ async def get_stocks_data_2_weeks():
             param = {
                 "type": "get_stocks_data",
                 "API_KEY": cab["token"],
-                "dateFrom": str(datetime.now() + timedelta(hours=3) - timedelta(days=1)), #вчерашний день с текущим временем
+                "dateFrom": str(datetime.now() + timedelta(hours=3) - timedelta(days=1)),
             }
             response = await wb_api(session, param)
 
@@ -1094,7 +1094,7 @@ async def get_stat_products():
                             raise
                         finally:
                             await conn.close()
-    tasks = [get_analitics(cab, 7) for cab in cabinets]
+    tasks = [get_analitics(cab, 14) for cab in cabinets]
     await asyncio.gather(*tasks)
 
 
