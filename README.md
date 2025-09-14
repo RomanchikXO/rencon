@@ -5,8 +5,11 @@ sudo apt install -y docker.io
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# Установка Docker Compose (если нужно)
-sudo apt install -y docker-compose
+# Установка Docker Compose
+sudo mkdir -p /usr/lib/docker/cli-plugins
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
+
 
 # клонируем проект , переходим в него
 # не забываем создать .env файл и credentials.json
