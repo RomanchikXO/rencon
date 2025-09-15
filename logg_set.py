@@ -60,7 +60,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'fastapi': {
+        'fastapi_app': {
             'handlers': ['db'],
             'level': 'INFO',
             'propagate': True,

@@ -1,3 +1,5 @@
+import json
+
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import MetaData, Table, select, create_engine
 from .database import database
@@ -44,6 +46,7 @@ class ProductsStatRequest(BaseModel):
     date_from: str | None = None
     date_to: str | None = None
     articles: list[int] | None = None
+    colors: list[str] | None = None
 
 
 @app.post("/products_stat/")
@@ -62,10 +65,51 @@ async def products_stat_endpoint(payload: ProductsStatRequest):
         lk_id = lk_row["id"]
 
         # Получаем список nmid по lk
-        query_nmids = select(nmids_table.c.nmid).where(nmids_table.c.lk_id == lk_id)
+        query_nmids = select(
+            nmids_table.c.nmid,
+            nmids_table.c.characteristics
+        ).where(nmids_table.c.lk_id == lk_id)
+
         if payload.articles:
             query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
-        nmids_list = [row["nmid"] for row in await database.fetch_all(query_nmids)]
+
+        # nmids_list = [row["nmid"] for row in await database.fetch_all(query_nmids)]
+        nmids_rows = await database.fetch_all(query_nmids)
+
+        nmids_list = []
+
+        for row in nmids_rows:
+            nmid = row["nmid"]
+            if payload.colors:
+                characteristics = row["characteristics"]  # JSONField из Django
+                if characteristics is None:
+                    continue
+
+                try:
+                    parsed = (
+                        characteristics
+                        if isinstance(characteristics, list)
+                        else json.loads(characteristics)
+                    )
+                except Exception:
+                    continue
+
+                color_entry = next(
+                    (item for item in parsed if item.get("id") == 14177449), None
+                )
+                if not color_entry:
+                    continue
+
+                value = color_entry.get("value")
+                if not value or not isinstance(value, list):
+                    continue
+
+                color_value = value[0].lower()  # берём первое значение
+                if color_value in [c.lower() for c in payload.colors]:
+                    nmids_list.append(nmid)
+            else:
+                nmids_list.append(nmid)
+
         if not nmids_list:
             return []
 
@@ -77,7 +121,20 @@ async def products_stat_endpoint(payload: ProductsStatRequest):
             query_stats = query_stats.where(products_table.c.date_wb <= date_to)
 
         stats_rows = await database.fetch_all(query_stats)
-        return [dict(row._mapping) for row in stats_rows]
+        art_per_day = [dict(row._mapping) for row in stats_rows]
+
+        all_data = {}
+        for i in art_per_day:
+            nmid = i["nmid"]
+            rub = i["ordersSumRub"]
+            sht = i["ordersCount"]
+
+            if nmid in all_data:
+                all_data[nmid]["руб"] += rub
+                all_data[nmid]["шт"] += sht
+            else:
+                all_data[nmid] = {"руб": rub, "шт": sht}
+        return all_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
