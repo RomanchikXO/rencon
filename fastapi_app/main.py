@@ -44,24 +44,33 @@ async def shutdown():
 
 # Pydantic-модель для входящего POST
 class ProductsStatRequest(BaseModel):
-    inn: int
-    date_from: str | None = None
-    date_to: str | None = None
-    articles: list[int] | None = None
-    colors: list[str] | None = None
+    inn: int = Field(..., description="ИНН клиента, обязательное поле")
+    date_from: str | None = Field(None, description="Дата начала выборки в формате YYYY-MM-DD, необязательное поле")
+    date_to: str | None = Field(None, description="Дата окончания выборки в формате YYYY-MM-DD, необязательное поле")
+    articles: list[int] | None = Field(None,
+                                       description="Список артикулов, по которым фильтровать, необязательное поле")
+    colors: list[str] | None = Field(None, description="Список цветов для фильтрации, необязательное поле")
 
 
 class ProductStatResponse(BaseModel):
-    rub: float
-    sht: int
+    rub: float = Field(..., description="Сумма заказов в рублях")
+    sht: int = Field(..., description="Количество заказов")
 
 
-@app.post("/products_stat/", response_model=Dict[int, ProductStatResponse])
+@app.post(
+    "/products_stat/",
+    response_model=Dict[int, ProductStatResponse],
+    summary="Получить информацию о заказах",
+    description="Возвращает суммарную информацию о заказах по NMID: количество и сумма в рублях. "
+                "Можно фильтровать по дате, артикулам и цветам."
+)
 async def products_stat_endpoint(payload: ProductsStatRequest):
     """
-    Получить информауию о заказах
-    :param payload:
-    :return:
+    Эндпоинт для получения статистики по заказам.
+    - `inn` — обязательный ИНН клиента
+    - `date_from`, `date_to` — диапазон дат для фильтрации
+    - `articles` — список артикулов
+    - `colors` — список цветов
     """
     try:
         # Парсим даты
