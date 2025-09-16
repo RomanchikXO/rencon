@@ -12,7 +12,7 @@ from dateutil.parser import parse as parse_date
 
 logger = ContextLogger(logging.getLogger("fastapi_app"))
 
-app = FastAPI()
+app = FastAPI(root_path="/api")
 
 # SQLAlchemy только для описания схемы (reflect)
 sync_engine = create_engine(
