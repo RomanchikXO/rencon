@@ -160,6 +160,22 @@ async def wb_api(session, param):
         API_URL = "https://advert-api.wildberries.ru/adv/v1/promotion/count"
         view = "get"
 
+    if param["type"] == "fullstatsadv":
+        """
+        Метод формирует статистику для всех кампаний, независимо от типа.
+        Данные вернутся для кампаний в статусах:
+
+        9 — активно
+        7 — завершено
+        11 — кампания на паузе
+        Если в запросе указан только ID кампании, по ней вернутся данные только за последние сутки.
+        """
+        API_URL = "https://advert-api.wildberries.ru/adv/v2/fullstats"
+
+        data = param["settings"]
+
+        view = "post"
+
     if param["type"] == "get_balance_lk":
         # получить balance-счет net-баланс bonus-бонусы личный кабинет
         # Максимум 1 запрос в секунду на один аккаунт продавца
