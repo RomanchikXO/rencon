@@ -2,7 +2,7 @@ import json
 from typing import Dict
 
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import MetaData, Table, select, create_engine
+from sqlalchemy import MetaData, Table, select, create_engine, func
 from .database import database
 from pydantic import BaseModel, Field
 from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
@@ -65,13 +65,7 @@ class ProductStatResponse(BaseModel):
                 "Можно фильтровать по дате, артикулам и цветам."
 )
 async def products_stat_endpoint(payload: ProductsStatRequest):
-    """
-    Эндпоинт для получения статистики по заказам.
-    - `inn` — обязательный ИНН клиента
-    - `date_from`, `date_to` — диапазон дат для фильтрации
-    - `articles` — список артикулов
-    - `colors` — список цветов
-    """
+
     try:
         # Парсим даты
         date_from = parse_date(payload.date_from).date() if payload.date_from else None
@@ -175,7 +169,11 @@ class ProductQuantResponse(BaseModel):
     inwayfromclient: int
 
 
-@app.post("/quantity/", response_model=Dict[int, ProductQuantResponse])
+@app.post(
+    "/quantity/",
+    response_model=Dict[int, ProductQuantResponse],
+    summary="Получить остатки для артикулов"
+)
 async def products_quantity_endpoint(payload: ProductsQuantRequest):
     try:
         # Получаем lk
@@ -242,11 +240,13 @@ async def products_quantity_endpoint(payload: ProductsQuantRequest):
             query_stocks = query_stocks.where(stocks_table.c.techsize.in_(payload.sizes))
 
         if payload.warhouses:
-            query_stocks = query_stocks.where(stocks_table.c.warehousename.in_(payload.warhouses))
+            lower_warehouses = [w.lower() for w in payload.warhouses]
+            query_stocks = query_stocks.where(
+                func.lower(stocks_table.c.warehousename).in_(lower_warehouses)
+            )
 
         stock_rows = await database.fetch_all(query_stocks)
         row_data = [dict(row._mapping) for row in stock_rows]
-        # return row_data
 
         all_data = {}
         for i in row_data:
@@ -266,5 +266,17 @@ async def products_quantity_endpoint(payload: ProductsQuantRequest):
                 all_data[nmid]["inwayfromclient"] = inwayfromclient
         return all_data
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/warehouses/", summary="Получить список уникальных складов")
+async def get_unique_warehouses():
+    try:
+        query = select(func.distinct(stocks_table.c.warehousename))
+        rows = await database.fetch_all(query)
+
+        warehouses = [row[0] for row in rows if row[0] is not None]
+        return warehouses
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
