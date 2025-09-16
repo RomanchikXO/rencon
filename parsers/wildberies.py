@@ -4,6 +4,10 @@ import httpx
 from typing import Union, List
 import time
 import aiohttp
+from asgiref.sync import sync_to_async
+from django.utils.timezone import now, timedelta as td
+from django.db.models import Q
+
 from database.DataBase import async_connect_to_database
 from database.funcs_db import get_data_from_db, add_set_data_from_db
 from datetime import datetime, timedelta
@@ -17,7 +21,7 @@ import io
 import csv
 from context_logger import ContextLogger
 from itertools import chain
-from myapp.models import Price
+from myapp.models import Price, Adverts
 
 logger = ContextLogger(logging.getLogger("parsers"))
 
@@ -170,11 +174,22 @@ async def wb_api(session, param):
         11 — кампания на паузе
         Если в запросе указан только ID кампании, по ней вернутся данные только за последние сутки.
         """
-        API_URL = "https://advert-api.wildberries.ru/adv/v2/fullstats"
+        API_URL = "https://advert-api.wildberries.ru/adv/v3/fullstats"
 
-        data = param["settings"]
+        params = param["settings"]
 
-        view = "post"
+        view = "get"
+
+    if param["type"] == "fin_report":
+        API_URL = "https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod"
+
+        params = {
+            "dateFrom": param["date_from"],
+            "dateTo": param["date_to"],
+            "rrdid": param.get("rrdid", 0),
+        }
+
+        view = "get"
 
     if param["type"] == "get_balance_lk":
         # получить balance-счет net-баланс bonus-бонусы личный кабинет
@@ -549,7 +564,7 @@ async def get_nmids():
                                 tag_ids = json.dumps([]),
                                 created_at=parse_datetime(resp["createdAt"]),
                                 updated_at=parse_datetime(resp["updatedAt"]),
-                                added_db=datetime.now() + timedelta(hours=3)
+                                added_db=datetime.now()
                             ),
                             conflict_fields=["nmid", "lk_id"]
                         )
@@ -575,7 +590,7 @@ async def get_stocks_data_2_weeks():
             param = {
                 "type": "get_stocks_data",
                 "API_KEY": cab["token"],
-                "dateFrom": str(datetime.now() + timedelta(hours=3) - timedelta(days=1)),
+                "dateFrom": str(datetime.now() - timedelta(days=1)),
             }
             response = await wb_api(session, param)
 
@@ -604,7 +619,7 @@ async def get_stocks_data_2_weeks():
                             issupply=quant["isSupply"],
                             isrealization=quant["isRealization"],
                             sccode=quant["SCCode"],
-                            added_db=datetime.now() + timedelta(hours=3)
+                            added_db=datetime.now()
 
                         ),
                         conflict_fields=['nmid', 'lk_id', 'supplierarticle', 'warehousename']
@@ -619,7 +634,7 @@ async def get_orders():
     cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
     for cab in cabinets:
         async with aiohttp.ClientSession() as session:
-            date_from = (datetime.now() + timedelta(hours=3) - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
+            date_from = (datetime.now() - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
             param = {
                 "type": "orders",
                 "API_KEY": cab["token"],
@@ -839,8 +854,8 @@ async def get_stock_age_by_period():
                 "type": "seller_analytics_generate",
                 "API_KEY": cab["token"],
                 "reportType": "STOCK_HISTORY_REPORT_CSV",
-                "start": (datetime.now() + timedelta(hours=3) - timedelta(days=period_get)).strftime('%Y-%m-%d'),
-                "end": (datetime.now() + timedelta(hours=3) - timedelta(days=1)).strftime('%Y-%m-%d'), #вчера с текущим временем
+                "start": (datetime.now() - timedelta(days=period_get)).strftime('%Y-%m-%d'),
+                "end": (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'), #вчера с текущим временем
                 "id": id_report, #'685d17f6-ed17-44b4-8a86-b8382b05873c'
                 "userReportName": get_uuid(),
             }
@@ -965,8 +980,8 @@ async def get_stat_products():
                 "type": "seller_analytics_generate",
                 "API_KEY": cab["token"],
                 "reportType": "DETAIL_HISTORY_REPORT",
-                "start": (datetime.now() + timedelta(hours=3) - timedelta(days=period_get)).strftime('%Y-%m-%d'),
-                "end": (datetime.now() + timedelta(hours=3) - timedelta(days=1)).strftime('%Y-%m-%d'),
+                "start": (datetime.now() - timedelta(days=period_get)).strftime('%Y-%m-%d'),
+                "end": (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
                 "id": id_report,  # '685d17f6-ed17-44b4-8a86-b8382b05873c'
                 "userReportName": get_uuid(),
             }
@@ -1121,7 +1136,7 @@ async def get_supplies():
             param = {
                 "type": "get_delivery_fbw",
                 "API_KEY": cab["token"],
-                "dateFrom": (datetime.now() + timedelta(hours=3) - timedelta(days=period_get)).strftime('%Y-%m-%d')
+                "dateFrom": (datetime.now() - timedelta(days=period_get)).strftime('%Y-%m-%d')
             }
             response = await wb_api(session, param)
             data = [
@@ -1175,6 +1190,172 @@ async def get_supplies():
 
     tasks = [get_analitics(cab, 7) for cab in cabinets]
     await asyncio.gather(*tasks)
+
+
+async def get_advs_stat():
+    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
+    semaphore = asyncio.Semaphore(3)
+
+    async def get_data_advs(cab):
+        conn = await async_connect_to_database()
+        if not conn:
+            logger.error(f"Ошибка подключения к БД в {cab['name']}")
+            raise
+        try:
+            param = {
+                "API_KEY": cab["token"],
+            }
+
+            yesterday = now() - td(days=1)
+            advs_ids = await sync_to_async(list)(
+                Adverts.objects.filter(
+                    Q(status__in=[9, 11], lk_id=cab["id"]) |
+                    Q(status=7, lk_id=cab["id"], changeTime__gte=yesterday)
+                ).values_list("advert_id", flat=True)
+            )
+
+            async with aiohttp.ClientSession() as session:
+                param["type"] = "fullstatsadv"
+
+                for i in range(0, len(advs_ids), 100):
+                    articles = [str(art) for art in advs_ids[i:i + 100]]
+
+                    startperiod = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                    endperiod = datetime.now().strftime('%Y-%m-%d')
+                    param["settings"] = {"ids": ",".join(articles), "beginDate": startperiod, "endDate": endperiod}
+                    response = await wb_api(session, param)
+
+                    await asyncio.sleep(60)
+
+                    data_for_upload = []
+                    if not response:
+                        continue
+                    for advert in response:
+                        advert_id = advert["advertId"]
+                        for day in advert["days"]:
+                            date_wb = datetime.strptime(day['date'][:10], '%Y-%m-%d').date()
+                            for app in day["apps"]:
+                                app_type = app["appType"]
+                                for nm in app["nms"]:
+                                    nmid = nm["nmId"]
+                                    orders = nm["orders"]
+                                    atbs = nm["atbs"]
+                                    canceled = nm["canceled"]
+                                    clicks = nm["clicks"]
+                                    cpc = nm["cpc"]
+                                    cr = nm["cr"]
+                                    ctr = nm["ctr"]
+                                    shks = nm["shks"]
+                                    sum_cost = nm["sum"]
+                                    sum_price = nm["sum_price"]
+                                    views = nm["views"]
+                                    data_for_upload.append(
+                                        (advert_id, date_wb, app_type, nmid, orders, atbs, canceled, clicks, cpc, cr, ctr,
+                                         shks, sum_cost, sum_price, views)
+                                    )
+                    try:
+                        query = f"""
+                            INSERT INTO myapp_advstat (
+                                "advert_id", "date_wb", "app_type", "nmid", "orders", "atbs", "canceled", "clicks",
+                                "cpc", "cr", "ctr", "shks", "sum_cost", "sum_price", "views"
+                            )
+                            VALUES (
+                                $1, $2, $3, $4, $5, $6,
+                                $7, $8, $9, $10, $11,
+                                $12, $13, $14, $15
+                            )
+                            ON CONFLICT ("nmid", "date_wb", "app_type", "advert_id") DO UPDATE SET
+                                "orders" = EXCLUDED."orders",
+                                "atbs" = EXCLUDED."atbs",
+                                "canceled" = EXCLUDED."canceled",
+                                "clicks" = EXCLUDED."clicks",
+                                "cpc" = EXCLUDED."cpc",
+                                "cr" = EXCLUDED."cr",
+                                "ctr" = EXCLUDED."ctr",
+                                "shks" = EXCLUDED."shks",
+                                "sum_cost" = EXCLUDED."sum_cost",
+                                "sum_price" = EXCLUDED."sum_price",
+                                "views" = EXCLUDED."views";
+                        """
+                        await conn.executemany(query, data_for_upload)
+                    except Exception as e:
+                        raise Exception(f"Ошибка обновления данных в myapp_advstat. Error: {e}")
+        except Exception as e:
+            logger.error(f"Ошибка в get_data_advs: {e}")
+        finally:
+            await conn.close()
+
+
+    async def get_analitics_limited(cab):
+        async with semaphore:
+            return await get_data_advs(cab)
+
+    tasks = [get_analitics_limited(cab) for cab in cabinets]
+    await asyncio.gather(*tasks)
+
+
+async def get_advs():
+    """
+    Получить списки всех рекламных кампаний продавца с их ID.
+    """
+
+    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
+
+    semaphore = asyncio.Semaphore(3)
+
+    async def get_advs_for_inn(cab):
+        conn = await async_connect_to_database()
+        if not conn:
+            logger.error(f"Ошибка подключения к БД в {cab['name']}")
+            raise
+        try:
+            param = {
+                "type": "list_adverts_id",
+                "API_KEY": cab["token"],
+            }
+            async with aiohttp.ClientSession() as session:
+                response = await wb_api(session, param)
+                response = response["adverts"]
+
+            data_for_upload = [
+                (
+                    cab["id"],
+                    adv["advertId"],
+                    adverts["status"],
+                    adverts["type"],
+                    datetime.strptime(adv["changeTime"][:10], "%Y-%m-%d").date()
+                )
+                for adverts in response
+                for adv in adverts["advert_list"]
+            ]
+
+            try:
+                query = f"""
+                    INSERT INTO myapp_adverts (
+                        "lk_id", "advert_id", "status", "type_adv", "changeTime"
+                    )
+                    VALUES (
+                        $1, $2, $3, $4, $5
+                    )
+                    ON CONFLICT ("advert_id") DO UPDATE SET
+                        "status" = EXCLUDED."status",
+                        "changeTime" = EXCLUDED."changeTime";
+                """
+                await conn.executemany(query, data_for_upload)
+            except Exception as e:
+                raise Exception(f"Ошибка обновления данных в myapp_adverts. Error: {e}")
+        except Exception as e:
+            logger.error(f"Ошибка в get_advs_for_inn: {e}")
+        finally:
+            await conn.close()
+
+    async def get_advs_limited(cab):
+        async with semaphore:
+            return await get_advs_for_inn(cab)
+
+    tasks = [get_advs_limited(cab) for cab in cabinets]
+    await asyncio.gather(*tasks)
+
 
 # loop = asyncio.get_event_loop()
 # res = loop.run_until_complete(test_addv())

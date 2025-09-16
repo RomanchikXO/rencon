@@ -1,8 +1,19 @@
 from django.contrib import admin
 from .models import (WbLk, Price, CeleryLog, nmids, Stocks, Orders,
-                     ProductsStat, Supplies, Betweenwarhouses, AreaWarehouses )
+                     ProductsStat, Supplies, Betweenwarhouses, AreaWarehouses, AdvStat, Adverts)
 
 
+class AdvertsAdmin(admin.ModelAdmin):
+    list_display = ('advert_id', 'type_adv', 'status')
+    list_filter = ('type_adv', 'status')
+    search_fields = ('advert_id',)
+
+
+class AdvStatAdmin(admin.ModelAdmin):
+    list_display = ('nmid', 'date_wb', 'app_type', 'advert_id')
+    search_fields = ('nmid', 'advert_id')
+    ordering = ('-date_wb',)
+    list_filter = ('nmid', 'advert_id', 'date_wb',)
 
 
 class AreaWarehousesAdmin(admin.ModelAdmin):
@@ -87,3 +98,5 @@ admin.site.register(ProductsStat, ProductsStatAdmin)
 admin.site.register(Supplies, SuppliesAdmin)
 admin.site.register(Betweenwarhouses, BetweenwarhousesAdmin)
 admin.site.register(AreaWarehouses, AreaWarehousesAdmin)
+admin.site.register(AdvStat, AdvStatAdmin)
+admin.site.register(Adverts, AdvertsAdmin)

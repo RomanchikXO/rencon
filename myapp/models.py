@@ -225,3 +225,36 @@ class CeleryLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.level}: {self.message}"
+
+
+class AdvStat(models.Model):
+    advert_id = models.IntegerField()
+    date_wb = models.DateTimeField(auto_now_add=True, null=True)  # дата от WB
+    app_type = models.IntegerField()
+    nmid = models.IntegerField()
+    orders = models.IntegerField()
+    atbs = models.IntegerField()
+    canceled = models.IntegerField()
+    clicks = models.IntegerField()
+    cpc = models.IntegerField()
+    cr = models.IntegerField()
+    ctr = models.IntegerField()
+    shks = models.IntegerField()
+    sum_cost = models.FloatField(default=0.0, null=True)
+    sum_price = models.IntegerField()
+    views = models.IntegerField()
+
+    class Meta:
+        verbose_name_plural = "Рекламная Стата"
+        unique_together = ['nmid', 'date_wb', 'app_type', 'advert_id']
+
+
+class Adverts(models.Model):
+    lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)  # lk_id в бд
+    advert_id = models.IntegerField(unique=True)
+    type_adv = models.IntegerField(default=0)
+    status = models.IntegerField()
+    changeTime = models.DateTimeField(auto_now_add=True, null=True)  # дата от WB
+
+    class Meta:
+        verbose_name_plural = "Рекламы"
