@@ -348,3 +348,87 @@ async def get_adv_cost(payload: ProductsStatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class AdvConversionResponse(BaseModel):
+    clicks: int
+    views: int
+    atbs: int
+
+
+@app.post(
+    "/adv_conversion/",
+    response_model=Dict[int, AdvConversionResponse],
+    summary="Получить данные по конверсии"
+)
+async def get_adv_conversion(payload: ProductsStatRequest):
+    try:
+        # Парсим даты
+        date_from = parse_date(payload.date_from).date() if payload.date_from else None
+        date_to = parse_date(payload.date_to).date() if payload.date_to else None
+
+        # Получаем lk
+        query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
+        lk_row = await database.fetch_one(query_lk)
+        if not lk_row:
+            raise HTTPException(status_code=404, detail="WbLk не найден")
+
+        lk_id = lk_row["id"]
+
+        # Получаем список nmid по lk
+        query_nmids = (
+            select(
+                advstat_table.c.nmid,
+                advstat_table.c.clicks,
+                advstat_table.c.views,
+                advstat_table.c.atbs,
+                nmids_table.c.characteristics
+            ).join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
+            .where(nmids_table.c.lk_id == lk_id)
+        )
+
+        if payload.articles:
+            query_nmids = query_nmids.where(advstat_table.c.nmid.in_(payload.articles))
+
+        if date_from:
+            query_nmids = query_nmids.where(advstat_table.c.date_wb >= date_from)
+
+        if date_to:
+            query_nmids = query_nmids.where(advstat_table.c.date_wb <= date_to)
+
+        colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
+
+        nmids_rows = await database.fetch_all(query_nmids)
+        result = {}
+        for row in nmids_rows:
+            if colors_lower:
+                characteristics = row["characteristics"]
+                match = next(
+                    (
+                        True
+                        for item in reversed(characteristics)  # итерация с конца
+                        if item["id"] == 14177449 and item["value"][0].lower() in colors_lower
+                    ),
+                    False
+                )
+
+                if not match:
+                    continue
+
+            nmid = row["nmid"]
+            clicks = row["clicks"] or 0
+            views = row["views"] or 0
+            atbs = row["atbs"] or 0
+            if result.get(nmid):
+                result[nmid]["clicks"] += clicks
+                result[nmid]["views"] += views
+                result[nmid]["atbs"] += atbs
+            else:
+                result[nmid] = {
+                    "clicks": clicks,
+                    "views": views,
+                    "atbs": atbs
+                }
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
