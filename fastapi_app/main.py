@@ -4,7 +4,7 @@ from typing import Dict
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import MetaData, Table, select, create_engine, func
 from .database import database
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 from context_logger import ContextLogger
 import logging
@@ -26,6 +26,7 @@ products_table = metadata.tables.get("myapp_productsstat")
 nmids_table = metadata.tables.get("myapp_nmids")
 wblk_table = metadata.tables.get("myapp_wblk")
 stocks_table = metadata.tables.get("myapp_stocks")
+advstat_table = metadata.tables.get("myapp_advstat")
 
 if None in [products_table, nmids_table, wblk_table, stocks_table]:
     logger.error("Одна из таблиц (ProductsStat, nmids, WbLk, Stocks) не найдена.")
@@ -280,3 +281,70 @@ async def get_unique_warehouses():
         return warehouses
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/adv_cost/",
+    response_model=Dict[int, float],
+    summary="Получить затраты на рекламу поартикульно"
+)
+async def get_adv_cost(payload: ProductsStatRequest):
+    try:
+        # Парсим даты
+        date_from = parse_date(payload.date_from).date() if payload.date_from else None
+        date_to = parse_date(payload.date_to).date() if payload.date_to else None
+
+        # Получаем lk
+        query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
+        lk_row = await database.fetch_one(query_lk)
+        if not lk_row:
+            raise HTTPException(status_code=404, detail="WbLk не найден")
+
+        lk_id = lk_row["id"]
+
+        # Получаем список nmid по lk
+        query_nmids = (
+            select(
+                advstat_table.c.nmid,
+                advstat_table.c.sum_cost,
+                nmids_table.c.characteristics
+            ).join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
+            .where(nmids_table.c.lk_id == lk_id)
+        )
+
+        if payload.articles:
+            query_nmids = query_nmids.where(advstat_table.c.nmid.in_(payload.articles))
+
+        if date_from:
+            query_nmids = query_nmids.where(advstat_table.c.date_wb >= date_from)
+
+        if date_to:
+            query_nmids = query_nmids.where(advstat_table.c.date_wb <= date_to)
+
+        colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
+
+        nmids_rows = await database.fetch_all(query_nmids)
+        result: dict[int, float] = {}
+        for row in nmids_rows:
+            if colors_lower:
+                characteristics = row["characteristics"]
+                match = next(
+                    (
+                        True
+                        for item in reversed(characteristics)  # итерация с конца
+                        if item["id"] == 14177449 and item["value"][0].lower() in colors_lower
+                    ),
+                    False
+                )
+
+                if not match:
+                    continue
+
+            nmid = row["nmid"]
+            cost = row["sum_cost"] or 0
+            result[nmid] = result.get(nmid, 0) + cost
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
