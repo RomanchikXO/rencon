@@ -258,3 +258,25 @@ class Adverts(models.Model):
 
     class Meta:
         verbose_name_plural = "Рекламы"
+
+
+class FinData(models.Model):
+    lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
+    rrd_id = models.IntegerField(unique=True) # Номер строки
+    rr_dt = models.DateTimeField() # Дата операции
+    nmid = models.IntegerField(unique=True) # Артикул ВБ
+    order_dt = models.DateTimeField() # Дата заказа
+    sale_dt = models.DateTimeField() # Дата продажи
+    shk_id = models.IntegerField(null=True) # Штрихкод
+    ts_name = models.CharField(max_length=255, null=True) # Размер
+    supplier_oper_name = models.CharField(max_length=255, null=True) # Основание для оплаты
+    retail_price = models.FloatField(null=True) # Цена розничная
+    retail_amount = models.FloatField(null=True) # Сумма реализации
+    ppvz_for_pay = models.FloatField(null=True) # К перечислению продавцу
+    delivery_rub = models.FloatField(null=True) # Стоимость доставки
+    storage_fee = models.FloatField(null=True) # Хранение
+    deduction = models.FloatField(null=True) # Удержание
+    acceptance = models.FloatField(null=True) # Платная приемка
+
+    class Meta:
+        verbose_name_plural = "ФИН отчет"

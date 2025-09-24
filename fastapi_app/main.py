@@ -155,6 +155,103 @@ async def products_stat_endpoint(payload: ProductsStatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# @app.post(
+#     "/products_sell/",
+#     response_model=Dict[int, ProductStatResponse],
+#     summary="Получить информацию о продажах",
+#     description="Возвращает суммарную информацию о продажах по NMID: количество и сумма в рублях. "
+#                 "Можно фильтровать по дате, артикулам и цветам."
+# )
+# async def products_sell_endpoint(payload: ProductsStatRequest):
+#
+#     try:
+#         # Парсим даты
+#         date_from = parse_date(payload.date_from).date() if payload.date_from else None
+#         date_to = parse_date(payload.date_to).date() if payload.date_to else None
+#
+#         # Получаем lk
+#         query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
+#         lk_row = await database.fetch_one(query_lk)
+#         if not lk_row:
+#             raise HTTPException(status_code=404, detail="WbLk не найден")
+#
+#         lk_id = lk_row["id"]
+#
+#         # Получаем список nmid по lk
+#         query_nmids = select(
+#             nmids_table.c.nmid,
+#             nmids_table.c.characteristics
+#         ).where(nmids_table.c.lk_id == lk_id)
+#
+#         if payload.articles:
+#             query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
+#
+#         nmids_rows = await database.fetch_all(query_nmids)
+#
+#         nmids_list = []
+#
+#         for row in nmids_rows:
+#             nmid = row["nmid"]
+#             if payload.colors:
+#                 characteristics = row["characteristics"]  # JSONField из Django
+#                 if characteristics is None:
+#                     continue
+#
+#                 try:
+#                     parsed = (
+#                         characteristics
+#                         if isinstance(characteristics, list)
+#                         else json.loads(characteristics)
+#                     )
+#                 except Exception:
+#                     continue
+#
+#                 color_entry = next(
+#                     (item for item in parsed if item.get("id") == 14177449), None
+#                 )
+#                 if not color_entry:
+#                     continue
+#
+#                 value = color_entry.get("value")
+#                 if not value or not isinstance(value, list):
+#                     continue
+#
+#                 color_value = value[0].lower()  # берём первое значение
+#                 if color_value in [c.lower() for c in payload.colors]:
+#                     nmids_list.append(nmid)
+#             else:
+#                 nmids_list.append(nmid)
+#
+#         if not nmids_list:
+#             return []
+#
+#         # Фильтруем ProductsStat
+#         query_stats = select(products_table).where(products_table.c.nmid.in_(nmids_list))
+#         if date_from:
+#             query_stats = query_stats.where(products_table.c.date_wb >= date_from)
+#         if date_to:
+#             query_stats = query_stats.where(products_table.c.date_wb <= date_to)
+#
+#         stats_rows = await database.fetch_all(query_stats)
+#         art_per_day = [dict(row._mapping) for row in stats_rows]
+#
+#         all_data = {}
+#         for i in art_per_day:
+#             nmid = i["nmid"]
+#             rub = i["buyoutsSumRub"]
+#             sht = i["buyoutsCount"]
+#
+#             if nmid in all_data:
+#                 all_data[nmid]["rub"] += rub
+#                 all_data[nmid]["sht"] += sht
+#             else:
+#                 all_data[nmid] = {"rub": rub, "sht": sht}
+#         return all_data
+#
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
 # Pydantic-модель для входящего POST
 class ProductsQuantRequest(BaseModel):
     inn: int

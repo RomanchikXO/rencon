@@ -981,7 +981,7 @@ async def get_stat_products():
                 "API_KEY": cab["token"],
                 "reportType": "DETAIL_HISTORY_REPORT",
                 "start": (datetime.now() - timedelta(days=period_get)).strftime('%Y-%m-%d'),
-                "end": (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+                "end": datetime.now().strftime('%Y-%m-%d'),
                 "id": id_report,  # '685d17f6-ed17-44b4-8a86-b8382b05873c'
                 "userReportName": get_uuid(),
             }
