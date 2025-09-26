@@ -504,7 +504,7 @@ async def wb_api(session, param):
                 return None
 
     if view == 'post':
-        async with session.post(API_URL, headers=headers, params=params, json=data, timeout=60,
+        async with session.post(API_URL, headers=headers, params=params, json=data, timeout=aiohttp.ClientTimeout(total=60),
                                 ssl=False) as response:
             response_text = await response.text()
             try:
