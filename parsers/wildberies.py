@@ -1059,15 +1059,15 @@ async def get_stock_age_by_period():
 async def get_stat_products():
     cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
 
-    async def get_analitics(cab: dict, period_get: int):
+    async def get_analitics(cab: dict, period_get: dict):
         async with aiohttp.ClientSession() as session:
             id_report = get_uuid()
             param = {
                 "type": "seller_analytics_generate",
                 "API_KEY": cab["token"],
                 "reportType": "DETAIL_HISTORY_REPORT",
-                "start": (datetime.now() - timedelta(days=period_get)).strftime('%Y-%m-%d'),
-                "end": datetime.now().strftime('%Y-%m-%d'),
+                "start": period["start"],
+                "end": period["end"],
                 "id": id_report,  # '685d17f6-ed17-44b4-8a86-b8382b05873c'
                 "userReportName": get_uuid(),
             }
@@ -1211,8 +1211,21 @@ async def get_stat_products():
                             raise
                         finally:
                             await conn.close()
-    tasks = [get_analitics(cab, 14) for cab in cabinets]
-    await asyncio.gather(*tasks)
+    periods = [
+        {
+            "start": (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+            "end": datetime.now().strftime('%Y-%m-%d')
+        },
+        {
+            "start": (datetime.now() - timedelta(days=15)).strftime('%Y-%m-%d'),
+            "end": (datetime.now() - timedelta(days=8)).strftime('%Y-%m-%d')
+        }
+    ]
+    for index, period in enumerate(periods):
+        tasks = [get_analitics(cab, period) for cab in cabinets]
+        await asyncio.gather(*tasks)
+        if index != len(periods) - 1:
+            await asyncio.sleep(60)
 
 
 async def get_supplies():
