@@ -1,5 +1,5 @@
 import json
-from typing import Dict
+from typing import Dict, Union
 
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import MetaData, Table, select, create_engine, func
@@ -32,6 +32,7 @@ wblk_table = metadata.tables.get("myapp_wblk")
 stocks_table = metadata.tables.get("myapp_stocks")
 advstat_table = metadata.tables.get("myapp_advstat")
 findata_table = metadata.tables.get("myapp_findata")
+savedata_table = metadata.tables.get("myapp_savedata")
 
 if None in [products_table, nmids_table, wblk_table, stocks_table]:
     logger.error("Одна из таблиц (ProductsStat, nmids, WbLk, Stocks) не найдена.")
@@ -64,14 +65,16 @@ class FinReportResponse(BaseModel):
     retail_amount: float = Field(..., description="Сумма реализации")
     ppvz_for_pay: float = Field(..., description="К перечислению продавцу")
     delivery_rub: float = Field(..., description="Стоимость доставки")
-    storage_fee: float = Field(..., description="Хранение")
-    deduction: float = Field(..., description="Удержание")
+    # storage_fee: float = Field(..., description="Хранение")
     acceptance: float = Field(..., description="Платная приемка")
 
+class FinReportResponseWithDeduction(BaseModel):
+    data: Dict[int, FinReportResponse]
+    deduction: float = Field(..., description="Удержание")
 
 @app.post(
     "/fin_report/",
-    response_model=Dict[int, FinReportResponse],
+    response_model=FinReportResponseWithDeduction,
     summary="Получить фин. отчет",
     description="Возвращает фин отчет по NMID. "
                 "Можно фильтровать по дате, артикулам и цветам, размерам и обоснованием для оплаты"
@@ -143,7 +146,15 @@ async def fin_report_endpoint(
             return []
 
         # Фильтруем ProductsStat
-        query_stats = select(findata_table).where(findata_table.c.nmid.in_(nmids_list))
+        query_stats = select(
+            findata_table.c.nmid,
+            findata_table.c.retail_price,
+            findata_table.c.retail_amount,
+            findata_table.c.ppvz_for_pay,
+            findata_table.c.delivery_rub,
+            findata_table.c.acceptance,
+            findata_table.c.rr_dt
+        ).where(findata_table.c.nmid.in_(nmids_list))
         if date_from:
             query_stats = query_stats.where(findata_table.c.rr_dt > date_from)
         if date_to:
@@ -152,6 +163,20 @@ async def fin_report_endpoint(
         stats_rows = await database.fetch_all(query_stats)
         art_per_day = [dict(row._mapping) for row in stats_rows]
 
+        # Отдельный запрос для deduction с сортировкой по дате
+        query_deduction = select(
+            findata_table.c.deduction,
+            findata_table.c.rr_dt
+        ).order_by(findata_table.c.rr_dt)
+
+        if date_from:
+            query_deduction = query_deduction.where(findata_table.c.rr_dt > date_from)
+        if date_to:
+            query_deduction = query_deduction.where(findata_table.c.rr_dt <= date_to)
+
+        deduction_rows = await database.fetch_all(query_deduction)
+        deductions = sum(row.deduction for row in deduction_rows) if deduction_rows else 0
+
         all_data = {}
         for i in art_per_day:
             nmid = i["nmid"]
@@ -159,29 +184,33 @@ async def fin_report_endpoint(
             retail_amount = i["retail_amount"]
             ppvz_for_pay = i["ppvz_for_pay"]
             delivery_rub = i["delivery_rub"]
-            storage_fee = i["storage_fee"] # будем брать из отдельной таблицы
-            deduction = i["deduction"] # в бд нет привязки к артикулу
             acceptance = i["acceptance"]
+            #storage_fee = i["storage_fee"] # будем брать из отдельной таблицы
+            #deduction = i["deduction"] # в бд нет привязки к артикулу
 
             if nmid in all_data:
                 all_data[nmid]["retail_price"] += retail_price
                 all_data[nmid]["retail_amount"] += retail_amount
                 all_data[nmid]["ppvz_for_pay"] += ppvz_for_pay
                 all_data[nmid]["delivery_rub"] += delivery_rub
-                all_data[nmid]["storage_fee"] += storage_fee
-                all_data[nmid]["deduction"] += deduction
                 all_data[nmid]["acceptance"] += acceptance
+                #all_data[nmid]["storage_fee"] += storage_fee
+                #all_data[nmid]["deduction"] += deduction
             else:
                 all_data[nmid] = {
                     "retail_price": retail_price,
                     "retail_amount": retail_amount,
                     "ppvz_for_pay": ppvz_for_pay,
                     "delivery_rub": delivery_rub,
-                    "storage_fee": storage_fee,
-                    "deduction": deduction,
                     "acceptance": acceptance,
+                    # "storage_fee": storage_fee,
+                    # "deduction": deduction,
                 }
-        return all_data
+        # all_data["deduction"] = deductions
+        return {
+            "data": all_data,
+            "deduction": deductions
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
