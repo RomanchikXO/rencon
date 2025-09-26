@@ -65,7 +65,7 @@ class FinReportResponse(BaseModel):
     retail_amount: float = Field(..., description="Сумма реализации")
     ppvz_for_pay: float = Field(..., description="К перечислению продавцу")
     delivery_rub: float = Field(..., description="Стоимость доставки")
-    # storage_fee: float = Field(..., description="Хранение")
+    storage_fee: float = Field(..., description="Хранение")
     acceptance: float = Field(..., description="Платная приемка")
 
 class FinReportResponseWithDeduction(BaseModel):
@@ -153,15 +153,35 @@ async def fin_report_endpoint(
             findata_table.c.ppvz_for_pay,
             findata_table.c.delivery_rub,
             findata_table.c.acceptance,
-            findata_table.c.rr_dt
+            findata_table.c.rr_dt,
+            findata_table.c.supplier_oper_name,
+            findata_table.c.ts_name
         ).where(findata_table.c.nmid.in_(nmids_list))
+        query_save = select(
+            savedata_table.c.nmid,
+            savedata_table.c.warehousePrice,
+            savedata_table.c.date_wb,
+            savedata_table.c.size
+        )
         if date_from:
             query_stats = query_stats.where(findata_table.c.rr_dt > date_from)
+            query_save = query_save.where(savedata_table.c.date_wb > date_from)
         if date_to:
             query_stats = query_stats.where(findata_table.c.rr_dt <= date_to)
+            query_save = query_save.where(savedata_table.c.date_wb <= date_to)
+        if payload.supplier_oper_name:
+            supplier_oper_name = [i.lower() for i in payload.supplier_oper_name]
+            query_stats = query_stats.where(findata_table.c.supplier_oper_name.in_(supplier_oper_name))
+        if payload.sizes:
+            sizes = [i.lower() for i in payload.sizes]
+            query_stats = query_stats.where(findata_table.c.ts_name.in_(sizes))
+            query_save = query_save.where(savedata_table.c.size.in_(sizes))
 
         stats_rows = await database.fetch_all(query_stats)
         art_per_day = [dict(row._mapping) for row in stats_rows]
+
+        save_rows = await database.fetch_all(query_save)
+        art_per_day_saves = [dict(row._mapping) for row in save_rows]
 
         # Отдельный запрос для deduction с сортировкой по дате
         query_deduction = select(
@@ -185,8 +205,6 @@ async def fin_report_endpoint(
             ppvz_for_pay = i["ppvz_for_pay"]
             delivery_rub = i["delivery_rub"]
             acceptance = i["acceptance"]
-            #storage_fee = i["storage_fee"] # будем брать из отдельной таблицы
-            #deduction = i["deduction"] # в бд нет привязки к артикулу
 
             if nmid in all_data:
                 all_data[nmid]["retail_price"] += retail_price
@@ -194,8 +212,6 @@ async def fin_report_endpoint(
                 all_data[nmid]["ppvz_for_pay"] += ppvz_for_pay
                 all_data[nmid]["delivery_rub"] += delivery_rub
                 all_data[nmid]["acceptance"] += acceptance
-                #all_data[nmid]["storage_fee"] += storage_fee
-                #all_data[nmid]["deduction"] += deduction
             else:
                 all_data[nmid] = {
                     "retail_price": retail_price,
@@ -203,10 +219,18 @@ async def fin_report_endpoint(
                     "ppvz_for_pay": ppvz_for_pay,
                     "delivery_rub": delivery_rub,
                     "acceptance": acceptance,
-                    # "storage_fee": storage_fee,
-                    # "deduction": deduction,
+                    "storage_fee": 0,
                 }
-        # all_data["deduction"] = deductions
+
+        for i in art_per_day_saves:
+            nmid = i["nmid"]
+            warehousePrice = i["warehousePrice"]
+            if all_data.get(nmid):
+                if all_data[nmid].get("storage_fee"):
+                    all_data[nmid]["storage_fee"] += warehousePrice
+                else:
+                    all_data[nmid]["storage_fee"] = warehousePrice
+
         return {
             "data": all_data,
             "deduction": deductions
