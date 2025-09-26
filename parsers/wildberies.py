@@ -143,6 +143,7 @@ def parse(links: list, disc: int) -> List[tuple]:
     response = parse_by_links(links, disc)
     return response
 
+
 async def wb_api(session, param):
     """
     Асинхронная функция для получения данных по API Wildberries.
@@ -164,6 +165,38 @@ async def wb_api(session, param):
         API_URL = "https://advert-api.wildberries.ru/adv/v1/promotion/count"
         view = "get"
 
+    if param["type"] == "fin_report":
+        API_URL = "https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod"
+
+        params = {
+            "dateFrom": param["date_from"],
+            "dateTo": param["date_to"],
+            "rrdid": param.get("rrdid", 0),
+        }
+
+        view = "get"
+
+    if param["type"] == "make_save_rep":
+        """Можно получить отчёт максимум за 8 дней."""
+        API_URL = "https://seller-analytics-api.wildberries.ru/api/v1/paid_storage"
+
+        params = {
+            "dateFrom": param["date_from"],
+            "dateTo": param["date_to"],
+        }
+
+        view = "get"
+
+    if param["type"] == "get_save_report":
+        """Можно получить отчёт максимум за 8 дней."""
+        API_URL = f"https://seller-analytics-api.wildberries.ru/api/v1/paid_storage/tasks/{param['task_id']}/download"
+
+        params = {
+            "task_id": param["task_id"],
+        }
+
+        view = "get"
+
     if param["type"] == "fullstatsadv":
         """
         Метод формирует статистику для всех кампаний, независимо от типа.
@@ -180,15 +213,8 @@ async def wb_api(session, param):
 
         view = "get"
 
-    if param["type"] == "fin_report":
-        API_URL = "https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod"
-
-        params = {
-            "dateFrom": param["date_from"],
-            "dateTo": param["date_to"],
-            "rrdid": param.get("rrdid", 0),
-        }
-
+    if param["type"] == "get_balance_seller":
+        API_URL = "https://finance-api.wildberries.ru/api/v1/account/balance"
         view = "get"
 
     if param["type"] == "get_balance_lk":
@@ -202,8 +228,19 @@ async def wb_api(session, param):
         # Данные обновляются раз в 30 минут.
         API_URL = "https://statistics-api.wildberries.ru/api/v1/supplier/orders"
         params = {
-            "dateFrom": param["date_from"], #Дата и время последнего изменения по заказу. `2019-06-20` `2019-06-20T23:59:59`
-            "flag": param["flag"],  #если flag=1 то только за выбранный день если 0 то
+            "dateFrom": param["date_from"],
+            # Дата и время последнего изменения по заказу. `2019-06-20` `2019-06-20T23:59:59`
+            "flag": param["flag"],  # если flag=1 то только за выбранный день если 0 то
+            # со дня до сегодня но не более 100000 строк
+        }
+        view = "get"
+
+    if param["type"] == "sales":
+        API_URL = "https://statistics-api.wildberries.ru/api/v1/supplier/sales"
+        params = {
+            "dateFrom": param["date_from"],
+            # Дата и время последнего изменения по продажам. `2019-06-20` `2019-06-20T23:59:59`
+            "flag": param["flag"],  # если flag=1 то только за выбранный день если 0 то
             # со дня до сегодня но не более 100000 строк
         }
         view = "get"
@@ -321,13 +358,28 @@ async def wb_api(session, param):
 
         data = {
             "currentPeriod": {
-                "start": param["start"], #"2024-02-10" Не позднее end. Не ранее 3 месяцев от текущей даты
-                "end": param["end"], #Дата окончания периода. Не ранее 3 месяцев от текущей даты
+                "start": param["start"],  # "2024-02-10" Не позднее end. Не ранее 3 месяцев от текущей даты
+                "end": param["end"],  # Дата окончания периода. Не ранее 3 месяцев от текущей даты
             },
-            "stockType": "" if not param.get("stockType") else param["stockType"], #"" — все wb—Склады WB mp—Склады Маркетплейс (FBS)
-            "skipDeletedNm": True if not param.get("skipDeletedNm") else param["skipDeletedNm"], #Скрыть удалённые товары
+            "stockType": "" if not param.get("stockType") else param["stockType"],
+            # "" — все wb—Склады WB mp—Склады Маркетплейс (FBS)
+            "skipDeletedNm": True if not param.get("skipDeletedNm") else param["skipDeletedNm"],
+            # Скрыть удалённые товары
         }
 
+        view = "post"
+
+    if param["type"] == "docs_cat":
+        """Метод возвращает категории документов для получения списка документов продавца."""
+        API_URL = "https://documents-api.wildberries.ru/api/v1/documents/categories"
+        view = "get"
+
+    if param["type"] == "list_docs":
+        API_URL = "https://documents-api.wildberries.ru/api/v1/documents/list"
+        view = "get"
+
+    if param["type"] == "get_docs":
+        API_URL = "https://documents-api.wildberries.ru/api/v1/documents/download/all"
         view = "post"
 
     if param["type"] == "seller_analytics_generate":
@@ -351,9 +403,9 @@ async def wb_api(session, param):
         ]
 
         data = {
-            "id": param["id"], # ID отчёта в UUID-формате
+            "id": param["id"],  # ID отчёта в UUID-формате
             "reportType": param["reportType"],
-            "userReportName": param["userReportName"], # Название отчета
+            "userReportName": param["userReportName"],  # Название отчета
         }
         if param["reportType"] == "DETAIL_HISTORY_REPORT":
             data["params"] = {
@@ -369,7 +421,7 @@ async def wb_api(session, param):
                 },  # str
                 "stockType": param.get("stockType", ""),
                 "skipDeletedNm": param.get("skipDeletedNm", True),  # скрыть удаленные товары
-                "availabilityFilters": param.get("availabilityFilters", statuses), # List[str]
+                "availabilityFilters": param.get("availabilityFilters", statuses),  # List[str]
                 "orderBy": {
                     "field": param.get("orderBy", "officeMissingTime"),
                     "mode": param.get("mode", "desc"),
@@ -385,7 +437,7 @@ async def wb_api(session, param):
         API_URL = f"https://seller-analytics-api.wildberries.ru/api/v2/nm-report/downloads/file/{param['downloadId']}"
 
         params = {
-            "downloadId": param["downloadId"], # string <uuid>
+            "downloadId": param["downloadId"],  # string <uuid>
         }
         view = "get"
 
@@ -394,7 +446,7 @@ async def wb_api(session, param):
         # Данные обновляются раз в 30 минут.
         # Максимум 1 запрос в минуту на один аккаунт продавца
 
-        params = {"dateFrom": param["dateFrom"]} #"2019-06-20"  Время передаётся в часовом поясе Мск (UTC+3).
+        params = {"dateFrom": param["dateFrom"]}  # "2019-06-20"  Время передаётся в часовом поясе Мск (UTC+3).
         API_URL = "https://statistics-api.wildberries.ru/api/v1/supplier/stocks"
 
         view = "get"
@@ -409,7 +461,7 @@ async def wb_api(session, param):
 
         data = {
             "data": param["data"]
-        } # List[dict]  где dict {"nmID": int, "price": int, "discount": int}
+        }  # List[dict]  где dict {"nmID": int, "price": int, "discount": int}
         view = "post"
 
     if param["type"] == "get_question":
@@ -420,19 +472,20 @@ async def wb_api(session, param):
 
         API_URL = "https://feedbacks-api.wildberries.ru/api/v1/questions"
         params = {
-            "isAnswered": param["isAnswered"], # bool отвеченные (True)
-            "take": param.get("take", 10000), # Количество запрашиваемых вопросов (максимально допустимое значение для параметра - 10 000, при этом сумма значений параметров take и skip не должна превышать 10 000)
-            "skip": param.get("skip", 0), # Количество вопросов для пропуска (максимально допустимое значение для параметра - 10 000, при этом сумма значений параметров take и skip не должна превышать 10 000)
+            "isAnswered": param["isAnswered"],  # bool отвеченные (True)
+            "take": param.get("take", 10000),
+            # Количество запрашиваемых вопросов (максимально допустимое значение для параметра - 10 000, при этом сумма значений параметров take и skip не должна превышать 10 000)
+            "skip": param.get("skip", 0),
+            # Количество вопросов для пропуска (максимально допустимое значение для параметра - 10 000, при этом сумма значений параметров take и skip не должна превышать 10 000)
         }
         view = "get"
-
 
     headers = {
         "Authorization": f"Bearer {param['API_KEY']}"  # Или просто API_KEY, если нужно
     }
 
     if view == 'get':
-        async with session.get(API_URL, headers=headers, params=params, timeout=60, ssl=False) as response:
+        async with session.get(API_URL, headers=headers, params=params, timeout=aiohttp.ClientTimeout(total=60), ssl=False) as response:
             if param["type"] == "seller_analytics_report":
                 try:
                     content = await response.read()
@@ -444,6 +497,7 @@ async def wb_api(session, param):
                 response.raise_for_status()
                 return json.loads(response_text)
             except Exception as e:
+                param.pop("API_KEY", None)
                 logger.error(
                     f"Ошибка в wb_api (get запрос): {e}. Ответ: {response_text}. Параметры: {param}"
                 )
@@ -461,6 +515,38 @@ async def wb_api(session, param):
                     f"Ошибка в wb_api (post запрос): {e}.  Ответ: {response_text}. Параметры: {param}"
                 )
                 return None
+
+
+async def insert_in_chunks(pool, query, data, chunk_size=1000):
+    """
+    Выполняет пакетную вставку данных в БД с разбиением на чанки и использованием транзакций.
+
+    Функция делит переданный список данных на части фиксированного размера (чанки)
+    и поочередно выполняет вставку для каждой части в рамках отдельной транзакции.
+    В случае ошибки в конкретном чанке транзакция откатывается, остальные чанки
+    продолжают загружаться. Таким образом достигается контроль атомарности и
+    повышается устойчивость загрузки больших объёмов данных.
+
+    Args:
+        pool: Асинхронное соединение с базой данных (объект asyncpg connection).
+        query (str): SQL-запрос для выполнения вставки (с плейсхолдерами $1, $2, ...).
+        data (list[tuple]): Список данных для вставки, где каждая запись представлена кортежем.
+        chunk_size (int, optional): Размер чанка (количество записей в одной транзакции).
+            По умолчанию 1000.
+
+    Raises:
+        Exception: Пробрасывает исключение, если вставка чанка завершилась с ошибкой.
+                   В этом случае транзакция откатывается.
+    """
+    for i in range(0, len(data), chunk_size):
+        chunk = data[i:i+chunk_size]
+        async with pool.acquire() as conn:
+            async with conn.transaction():  # ✅ транзакция на чанк
+                try:
+                    await conn.executemany(query, chunk)
+                except Exception:
+                    logger.exception(f"Ошибка загрузки чанка {i // chunk_size + 1}")
+                    raise
 
 
 async def get_products_and_prices():
@@ -1354,6 +1440,196 @@ async def get_advs():
             return await get_advs_for_inn(cab)
 
     tasks = [get_advs_limited(cab) for cab in cabinets]
+    await asyncio.gather(*tasks)
+
+
+async def get_fin_report():
+    """
+    Получить фин отчет
+    """
+
+    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
+
+    semaphore = asyncio.Semaphore(3)
+    async def fin_report_by_lk(cab):
+        conn = await async_connect_to_database()
+        if not conn:
+            logger.error(f"Ошибка подключения к БД в {cab['name']}")
+            raise
+        try:
+            param = {
+                "type": "fin_report",
+                "API_KEY": cab["token"],
+                "date_from": (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d'),
+                "date_to": datetime.now().strftime('%Y-%m-%d')
+            }
+
+            async with aiohttp.ClientSession() as session:
+                response = await wb_api(session, param)
+
+            try:
+                data_for_upload = [
+                    (
+                        cab["id"],
+                        str(row["rrd_id"]),
+                        datetime.strptime(row["rr_dt"][:10], "%Y-%m-%d").date(),
+                        row.get("nm_id"),
+                        datetime.strptime(row["order_dt"][:10], "%Y-%m-%d").date(),
+                        datetime.strptime(row["sale_dt"][:10], "%Y-%m-%d").date(),
+                        str(row.get("shk_id")) if row.get("shk_id") is not None else None,
+                        row["ts_name"].lower(),
+                        row["supplier_oper_name"].lower(),
+                        float(row["retail_price"]),
+                        row.get("retail_amount"),
+                        row.get("ppvz_for_pay"),
+                        row.get("delivery_rub"),
+                        row.get("storage_fee"),
+                        row.get("deduction"),
+                        float(row["acceptance"]),
+                    )
+                    for row in response
+                ]
+            except Exception as e:
+                raise Exception(f"ошибка подготовки данных {e}")
+
+            try:
+                query = f"""
+                    INSERT INTO myapp_findata (
+                        "lk_id", "rrd_id", "rr_dt", "nmid", "order_dt", "sale_dt", "shk_id", "ts_name", "supplier_oper_name",
+                        "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "storage_fee", "deduction",
+                        "acceptance"
+                    )
+                    VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                    )
+                    ON CONFLICT ("rrd_id") DO UPDATE SET
+                        "sale_dt" = EXCLUDED."sale_dt",
+                        "retail_price" = EXCLUDED."retail_price",
+                        "retail_amount" = EXCLUDED."retail_amount",
+                        "ppvz_for_pay" = EXCLUDED."ppvz_for_pay",
+                        "delivery_rub" = EXCLUDED."delivery_rub",
+                        "storage_fee" = EXCLUDED."storage_fee",
+                        "deduction" = EXCLUDED."deduction",
+                        "acceptance" = EXCLUDED."acceptance";
+                """
+                await insert_in_chunks(conn, query, data_for_upload, chunk_size=1000)
+            except Exception as e:
+                raise Exception(f"Ошибка обновления данных в myapp_findata. Error: {e}")
+        except Exception:
+            logger.exception(f"Ошибка в fin_report_by_lk")
+        finally:
+            await conn.close()
+
+    async def get_fin_rep_limited(cab):
+        async with semaphore:
+            return await fin_report_by_lk(cab)
+
+    tasks = [get_fin_rep_limited(cab) for cab in cabinets]
+    await asyncio.gather(*tasks)
+
+
+async def make_and_get_save_report():
+    """
+    Отчет о платном хранении
+    """
+
+    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
+
+    semaphore = asyncio.Semaphore(3)
+    async def save_dates(cab):
+        param = {
+            "type": "make_save_rep",
+            "API_KEY": cab["token"],
+            "date_from": (datetime.now() - timedelta(days=8)).strftime('%Y-%m-%d'),
+            "date_to": datetime.now().strftime('%Y-%m-%d')
+        }
+
+        async with aiohttp.ClientSession() as session:
+            response = await wb_api(session, param)
+            try:
+                task_id = response["data"]["taskId"]
+            except Exception as e:
+                logger.error(f"Ошибка при запросе отчета платного хранения для кабинета {cab['name']}")
+                raise
+
+        param["type"] = "get_save_report"
+        param["task_id"] = task_id
+
+        for i in range(1,5):
+            await asyncio.sleep(10*i)
+            if i == 4:
+                logger.error(f"Ошибка получения данных о платном хранении для {cab['name']}")
+                return
+            async with aiohttp.ClientSession() as session:
+                response = await wb_api(session, param)
+                try:
+                    conn = await async_connect_to_database()
+                    if not conn:
+                        raise Exception(f"Ошибка подключения к БД в {cab['name']}")
+
+                    try:
+                        data_for_upload = [
+                            (
+                                cab["id"],
+                                datetime.strptime(row["date"][:10], "%Y-%m-%d").date(),
+                                row["logWarehouseCoef"],
+                                row["officeId"],
+                                row["warehouse"],
+                                row["warehouseCoef"],
+                                row["giId"],
+                                row["chrtId"],
+                                row["size"],
+                                row["barcode"],
+                                row["subject"],
+                                row["brand"],
+                                row["vendorCode"],
+                                row["nmId"],
+                                row["volume"],
+                                row["calcType"],
+                                row["warehousePrice"],
+                                row["barcodesCount"],
+                                row["palletPlaceCode"],
+                                row["palletCount"],
+                                datetime.strptime(row["originalDate"][:10], "%Y-%m-%d").date(),
+                                row["loyaltyDiscount"],
+                                datetime.strptime(row["tariffFixDate"][:10], "%Y-%m-%d").date() if row.get("tariffFixDate") else None,
+                                datetime.strptime(row["tariffLowerDate"][:10], "%Y-%m-%d").date() if row.get("tariffLowerDate") else None
+                            )
+                            for row in response
+                        ]
+                    except Exception as e:
+                        raise Exception(f"ошибка подготовки данных {e}")
+
+                    try:
+                        query = f"""
+                            INSERT INTO myapp_savedata (
+                                "lk_id", "date_wb", "logWarehouseCoef", "officeId", "warehouse", "warehouseCoef", "giId",
+                                "chrtId", "size", "barcode", "subject", "brand", "vendorcode", "nmid", "volume",
+                                "calcType", "warehousePrice", "barcodesCount", "palletPlaceCode", "palletCount", 
+                                "originalDate", "loyaltyDiscount", "tariffFixDate", "tariffLowerDate"
+                            )
+                            VALUES (
+                                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
+                                $20, $21, $22, $23, $24
+                            )
+                            ON CONFLICT ("date_wb", "nmid", "calcType", "size") DO UPDATE SET
+                                "warehousePrice" = EXCLUDED."warehousePrice";
+                        """
+                        await insert_in_chunks(conn, query, data_for_upload, chunk_size=1000)
+                    except Exception as e:
+                        raise Exception(f"Ошибка обновления данных. Error: {e}")
+
+                except Exception as e:
+                    logger.error(f"Ошибка в save_dates: {e}")
+                finally:
+                    await conn.close()
+            break
+
+    async def get_save_rep_limited(cab):
+        async with semaphore:
+            return await save_dates(cab)
+
+    tasks = [get_save_rep_limited(cab) for cab in cabinets]
     await asyncio.gather(*tasks)
 
 
