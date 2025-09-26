@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (WbLk, Price, CeleryLog, nmids, Stocks, Orders,
                      ProductsStat, Supplies, Betweenwarhouses, AreaWarehouses, AdvStat, Adverts,
-                     FinData)
+                     FinData, SaveData)
 
 
 class AdvertsAdmin(admin.ModelAdmin):
@@ -92,7 +92,11 @@ class FinDataAdmin(admin.ModelAdmin):
     list_display = ('rr_dt', 'nmid', 'ts_name')
     ordering = ('rrd_id',)
 
+class SaveDataAdmin(admin.ModelAdmin):
+    list_display = ('date_wb', 'nmid', 'size', 'calcType')
+    ordering = ('date_wb',)
 
+admin.site.register(SaveData, SaveDataAdmin)
 admin.site.register(FinData, FinDataAdmin)
 admin.site.register(Orders, OrdersAdmin)
 admin.site.register(Stocks, StocksAdmin)

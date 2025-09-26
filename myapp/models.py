@@ -262,12 +262,12 @@ class Adverts(models.Model):
 
 class FinData(models.Model):
     lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
-    rrd_id = models.IntegerField(unique=True) # Номер строки
+    rrd_id = models.CharField(max_length=255, unique=True) # Номер строки
     rr_dt = models.DateTimeField() # Дата операции
-    nmid = models.IntegerField(unique=True) # Артикул ВБ
+    nmid = models.IntegerField() # Артикул ВБ
     order_dt = models.DateTimeField() # Дата заказа
     sale_dt = models.DateTimeField() # Дата продажи
-    shk_id = models.IntegerField(null=True) # Штрихкод
+    shk_id = models.CharField(max_length=255, null=True) # Штрихкод
     ts_name = models.CharField(max_length=255, null=True) # Размер
     supplier_oper_name = models.CharField(max_length=255, null=True) # Основание для оплаты
     retail_price = models.FloatField(null=True) # Цена розничная
@@ -280,3 +280,34 @@ class FinData(models.Model):
 
     class Meta:
         verbose_name_plural = "ФИН отчет"
+
+
+class SaveData(models.Model):
+    lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
+    date_wb = models.DateTimeField(null=True)  # дата от WB
+    logWarehouseCoef = models.IntegerField()
+    officeId = models.IntegerField()
+    warehouse = models.CharField(max_length=255, null=True)
+    warehouseCoef = models.IntegerField()
+    giId = models.IntegerField()
+    chrtId = models.IntegerField()
+    size = models.CharField(max_length=255, null=True)
+    barcode = models.CharField(max_length=255, null=True)
+    subject = models.CharField(max_length=255, null=True)
+    brand = models.CharField(max_length=255, null=True)
+    vendorcode = models.CharField(max_length=255, null=True)
+    nmid = models.IntegerField() # Артикул ВБ
+    volume = models.IntegerField()
+    calcType = models.CharField(max_length=255, null=True)
+    warehousePrice = models.IntegerField()
+    barcodesCount = models.IntegerField()
+    palletPlaceCode = models.IntegerField()
+    palletCount = models.IntegerField()
+    originalDate = models.DateTimeField(null=True)
+    loyaltyDiscount = models.IntegerField()
+    tariffFixDate = models.DateTimeField(null=True)
+    tariffLowerDate = models.DateTimeField(null=True)
+
+    class Meta:
+        unique_together = ['date_wb', 'nmid', 'calcType', 'size']
+        verbose_name_plural = 'ХРАНЕНИЕ платное'
