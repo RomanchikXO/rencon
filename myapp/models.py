@@ -284,29 +284,29 @@ class FinData(models.Model):
 
 class SaveData(models.Model):
     lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
-    date_wb = models.DateTimeField(null=True)  # дата от WB
-    logWarehouseCoef = models.IntegerField()
-    officeId = models.IntegerField()
-    warehouse = models.CharField(max_length=255, null=True)
-    warehouseCoef = models.IntegerField()
-    giId = models.IntegerField()
-    chrtId = models.IntegerField()
-    size = models.CharField(max_length=255, null=True)
-    barcode = models.CharField(max_length=255, null=True)
-    subject = models.CharField(max_length=255, null=True)
-    brand = models.CharField(max_length=255, null=True)
-    vendorcode = models.CharField(max_length=255, null=True)
+    date_wb = models.DateTimeField(null=True)  # Дата, за которую был расчёт или перерасчёт
+    logWarehouseCoef = models.IntegerField() # Коэффициент логистики и хранения
+    officeId = models.IntegerField() # ID склада
+    warehouse = models.CharField(max_length=255, null=True) # Название склада
+    warehouseCoef = models.IntegerField() # Коэффициент склада
+    giId = models.IntegerField() # ID поставки
+    chrtId = models.IntegerField() # ID размера для этого артикула WB
+    size = models.CharField(max_length=255, null=True) # Размер (techSize в карточке товара)
+    barcode = models.CharField(max_length=255, null=True) # Баркод
+    subject = models.CharField(max_length=255, null=True) # Предмет
+    brand = models.CharField(max_length=255, null=True) # Бренд
+    vendorcode = models.CharField(max_length=255, null=True) # Артикул продавца
     nmid = models.IntegerField() # Артикул ВБ
-    volume = models.IntegerField()
-    calcType = models.CharField(max_length=255, null=True)
-    warehousePrice = models.IntegerField()
-    barcodesCount = models.IntegerField()
-    palletPlaceCode = models.IntegerField()
-    palletCount = models.IntegerField()
-    originalDate = models.DateTimeField(null=True)
-    loyaltyDiscount = models.IntegerField()
-    tariffFixDate = models.DateTimeField(null=True)
-    tariffLowerDate = models.DateTimeField(null=True)
+    volume = models.IntegerField() # Объём товара
+    calcType = models.CharField(max_length=255, null=True) # Способ расчёта
+    warehousePrice = models.IntegerField() # Сумма хранения
+    barcodesCount = models.IntegerField() # Количество единиц товара (штук), подлежащих тарифицированию за расчётные сутки
+    palletPlaceCode = models.IntegerField() # Код паллетоместа
+    palletCount = models.IntegerField() # Количество паллет
+    originalDate = models.DateTimeField(null=True) # Если был перерасчёт, это дата первоначального расчёта. Если перерасчёта не было, совпадает с date_wb
+    loyaltyDiscount = models.IntegerField() # Скидка программы лояльности, ₽
+    tariffFixDate = models.DateTimeField(null=True) # Дата фиксации тарифа
+    tariffLowerDate = models.DateTimeField(null=True) # Дата понижения тарифа
 
     class Meta:
         unique_together = ['date_wb', 'nmid', 'calcType', 'size']
