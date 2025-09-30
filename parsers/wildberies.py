@@ -1342,7 +1342,7 @@ async def get_advs_stat():
                     param["settings"] = {"ids": ",".join(articles), "beginDate": startperiod, "endDate": endperiod}
                     response = await wb_api(session, param)
 
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(65)
 
                     data_for_upload = []
                     if not response:
