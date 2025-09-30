@@ -622,7 +622,7 @@ async def get_nmids():
                 response = await wb_api(session, param)
 
                 if response.get("cursor"):
-                    if response["total"] == 0:
+                    if response["cursor"]["total"] == 0:
                         break
 
                 if not response.get("cards"):
