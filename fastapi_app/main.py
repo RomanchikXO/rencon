@@ -588,6 +588,20 @@ async def get_unique_warehouses(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/supplier_oper_name/", summary="Получить список уникальных оснований для оплаты")
+async def get_supplier_oper_name(
+        token: str = Depends(verify_token)
+):
+    try:
+        query = select(func.distinct(findata_table.c.supplier_oper_name))
+        rows = await database.fetch_all(query)
+
+        supplier_oper_names = [row[0] for row in rows if row[0] is not None]
+        return supplier_oper_names
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post(
     "/adv_cost/",
     response_model=Dict[int, float],
