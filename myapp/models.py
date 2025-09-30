@@ -311,3 +311,21 @@ class SaveData(models.Model):
     class Meta:
         unique_together = ['date_wb', 'nmid', 'calcType', 'size']
         verbose_name_plural = 'ХРАНЕНИЕ платное'
+
+
+class RegionSales(models.Model):
+    lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
+    date_wb = models.DateTimeField() # дата вставки/обновления
+    nmid = models.IntegerField()  # Артикул ВБ
+    cityName = models.CharField(max_length=255, null=True) # Населенный пункт
+    countryName = models.CharField(max_length=255, null=True) # Страна
+    foName = models.CharField(max_length=255, null=True) # Федеральный округ
+    regionName = models.CharField(unique=True, max_length=255) # Регион
+    sa = models.CharField(max_length=255, null=True) # Артикул продавца
+    saleInvoiceCostPrice = models.FloatField() # К перечислению за товар, ₽
+    saleInvoiceCostPricePerc = models.FloatField()  # Доля, %
+    saleItemInvoiceQty = models.IntegerField(null=True) # Выкупили, шт.
+
+    class Meta:
+        unique_together = ['date_wb', 'nmid', 'sa', 'cityName']
+        verbose_name_plural = 'ПРОДАЖИ по регионам'
