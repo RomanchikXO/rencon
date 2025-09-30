@@ -320,7 +320,7 @@ class RegionSales(models.Model):
     cityName = models.CharField(max_length=255, null=True) # Населенный пункт
     countryName = models.CharField(max_length=255, null=True) # Страна
     foName = models.CharField(max_length=255, null=True) # Федеральный округ
-    regionName = models.CharField(unique=True, max_length=255) # Регион
+    regionName = models.CharField(ax_length=255, null=True) # Регион
     sa = models.CharField(max_length=255, null=True) # Артикул продавца
     saleInvoiceCostPrice = models.FloatField() # К перечислению за товар, ₽
     saleInvoiceCostPricePerc = models.FloatField()  # Доля, %
