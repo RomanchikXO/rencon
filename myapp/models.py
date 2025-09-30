@@ -327,5 +327,5 @@ class RegionSales(models.Model):
     saleItemInvoiceQty = models.IntegerField(null=True) # Выкупили, шт.
 
     class Meta:
-        unique_together = ['date_wb', 'nmid', 'sa', 'cityName']
+        unique_together = ['date_wb', 'nmid', 'sa', 'cityName', 'regionName']
         verbose_name_plural = 'ПРОДАЖИ по регионам'

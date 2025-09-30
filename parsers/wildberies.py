@@ -1740,7 +1740,7 @@ async def get_region_sales():
                             VALUES (
                                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                             )
-                            ON CONFLICT ("date_wb", "nmid", "sa", "cityName") DO UPDATE SET
+                            ON CONFLICT ("date_wb", "nmid", "sa", "cityName", "regionName") DO UPDATE SET
                                 "saleInvoiceCostPrice" = EXCLUDED."saleInvoiceCostPrice",
                                 "saleInvoiceCostPricePerc" = EXCLUDED."saleInvoiceCostPricePerc",
                                 "saleItemInvoiceQty" = EXCLUDED."saleItemInvoiceQty";
@@ -1750,7 +1750,7 @@ async def get_region_sales():
                         raise Exception(f"Ошибка обновления данных. Error: {e}")
 
         except Exception as e:
-                logger.error(f"Ошибка в save_dates: {e}")
+                logger.error(f"Ошибка в sale_dates: {e}")
         finally:
             try:
                 await conn.close()
