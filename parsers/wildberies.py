@@ -1698,7 +1698,7 @@ async def get_region_sales():
                 dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 3)]
             else:
                 logger.info(f"Данные о продажах в регионе для {cab['name']} отсутствуют в БД")
-                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 14)]
+                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 16)]
 
             for _date in dates:
                 param = {
