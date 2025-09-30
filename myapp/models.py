@@ -315,7 +315,7 @@ class SaveData(models.Model):
 
 class RegionSales(models.Model):
     lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1)
-    date_wb = models.DateTimeField() # дата вставки/обновления
+    date_wb = models.DateTimeField() # дата отчета
     nmid = models.IntegerField()  # Артикул ВБ
     cityName = models.CharField(max_length=255, null=True) # Населенный пункт
     countryName = models.CharField(max_length=255, null=True) # Страна

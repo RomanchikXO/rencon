@@ -1715,7 +1715,7 @@ async def get_region_sales():
                         data_for_upload = [
                             (
                                 cab["id"],
-                                datetime.now().date(),
+                                datetime.strptime(_date, "%Y-%m-%d").date(),
                                 row["nmID"],
                                 row["cityName"],
                                 row["countryName"],
