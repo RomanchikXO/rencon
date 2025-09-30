@@ -621,7 +621,7 @@ async def get_nmids():
             while True:
                 response = await wb_api(session, param)
                 if not response.get("cards"):
-                    logger.error(f"Ошибка при получении артикулов: {response}")
+                    logger.error(f"Ошибка при получении артикулов для {cab['name']}: {response}")
                     raise
                 conn = await async_connect_to_database()
                 if not conn:
