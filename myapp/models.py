@@ -90,7 +90,7 @@ class nmids(models.Model):
     vendorcode = models.CharField(max_length=255) # Артикул продавца
     brand = models.CharField(max_length=255) # Бренд
     title = models.CharField(max_length=500) # Наименование товара
-    description = models.TextField() # Описание товара
+    description = models.TextField(null=True, blank=True) # Описание товара
     needkiz = models.BooleanField() # Требуется ли код маркировки для этого товара
     dimensions = models.JSONField() # Габариты и вес товара c упаковкой, см и кг
     characteristics = models.JSONField() # Характеристики
