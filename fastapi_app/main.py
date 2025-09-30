@@ -738,7 +738,8 @@ async def get_adv_reg_sales(
         query_stats = select(
             sales_reg_table.c.nmid,
             sales_reg_table.c.date_wb,
-            sales_reg_table.c.saleInvoiceCostPrice
+            sales_reg_table.c.saleInvoiceCostPrice,
+            sales_reg_table.c.saleItemInvoiceQty
         ).where(sales_reg_table.c.nmid.in_(nmids_list))
         if date_from:
             query_stats = query_stats.where(sales_reg_table.c.date_wb >= date_from)
@@ -752,7 +753,8 @@ async def get_adv_reg_sales(
         for i in art_per_day:
             nmid = i["nmid"]
             rub = i["saleInvoiceCostPrice"]
-            sht = i["saleItemInvoiceQty"]
+            sht = i["saleItemInvoiceQty"],
+
 
             if nmid in all_data:
                 all_data[nmid]["rub"] += rub
