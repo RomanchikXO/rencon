@@ -675,7 +675,7 @@ async def get_adv_reg_sales(
 ):
     try:
         # Парсим даты
-        date_from = parse_date(payload.date_from).date() if payload.date_from else None
+        date_from = (parse_date(payload.date_from) - timedelta(days=1)).date() if payload.date_from else None
         date_to = parse_date(payload.date_to).date() if payload.date_to else None
 
         # Получаем lk
