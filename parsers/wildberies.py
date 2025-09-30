@@ -497,10 +497,10 @@ async def wb_api(session, param):
                 response.raise_for_status()
                 return json.loads(response_text)
             except Exception as e:
-                param.pop("API_KEY", None)
                 logger.error(
                     f"Ошибка в wb_api (get запрос): {e}. Ответ: {response_text}. Параметры: {param}"
                 )
+                param.pop("API_KEY", None)
                 return None
 
     if view == 'post':
