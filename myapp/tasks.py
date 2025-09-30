@@ -3,7 +3,7 @@ import asyncio
 
 from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, get_stock_age_by_period,
                                 get_qustions, get_stat_products, get_advs, get_advs_stat, get_fin_report,
-                                make_and_get_save_report)
+                                make_and_get_save_report, get_region_sales)
 from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
 
@@ -12,6 +12,14 @@ from decorators import with_task_context
 from context_logger import ContextLogger
 
 logger = ContextLogger(logging.getLogger("myapp"))
+
+
+@shared_task
+@with_task_context("get_region_sales")
+def get_region_sales_task():
+    logger.info("🟢 Обновляем ПРОДАЖИ регион в БД")
+    asyncio.run(get_region_sales())
+    logger.info("ПРОДАЖИ регион в БД обновлены")
 
 
 @shared_task
