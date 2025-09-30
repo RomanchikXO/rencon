@@ -753,7 +753,7 @@ async def get_adv_reg_sales(
         for i in art_per_day:
             nmid = i["nmid"]
             rub = i["saleInvoiceCostPrice"]
-            sht = i["saleItemInvoiceQty"],
+            sht = i["saleItemInvoiceQty"]
 
 
             if nmid in all_data:
