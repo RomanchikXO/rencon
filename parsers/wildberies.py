@@ -673,17 +673,29 @@ async def get_stocks_data_2_weeks():
 
     for cab in cabinets:
         async with aiohttp.ClientSession() as session:
-            param = {
-                "type": "get_stocks_data",
-                "API_KEY": cab["token"],
-                "dateFrom": str(datetime.now() - timedelta(days=1)),
-            }
-            response = await wb_api(session, param)
-
             conn = await async_connect_to_database()
             if not conn:
                 logger.error("Ошибка подключения к БД")
                 raise
+
+            req_is_rows_in_db = """
+                SELECT * from myapp_stocks WHERE lk_id = $1 LIMIT 1 
+            """
+            all_fields = await conn.fetch(req_is_rows_in_db, cab["id"])
+
+            if all_fields:
+                days = 1
+            else:
+                logger.info("Пишим остатки в БД впервые")
+                days = 250
+
+            param = {
+                "type": "get_stocks_data",
+                "API_KEY": cab["token"],
+                "dateFrom": str(datetime.now() - timedelta(days=days)),
+            }
+            response = await wb_api(session, param)
+
             try:
                 for quant in response:
                     await add_set_data_from_db(
