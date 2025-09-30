@@ -642,7 +642,7 @@ async def get_nmids():
                                 vendorcode=resp["vendorCode"],
                                 brand=resp["brand"],
                                 title=resp["title"],
-                                description=resp["description"],
+                                description=resp.get("description", ""),
                                 needkiz=resp["needKiz"],
                                 dimensions=json.dumps(resp["dimensions"]),
                                 characteristics=json.dumps(resp["characteristics"]),
