@@ -197,6 +197,17 @@ async def wb_api(session, param):
 
         view = "get"
 
+    if param["type"] == 'region_sale':
+        """Метод возвращает отчёт с данными продаж, сгруппированных по регионам стран."""
+        API_URL = "https://seller-analytics-api.wildberries.ru/api/v1/analytics/region-sale"
+
+        params = {
+            "dateFrom": param["dateFrom"],
+            "dateTo": param["dateTo"],
+        }
+
+        view = "get"
+
     if param["type"] == "fullstatsadv":
         """
         Метод формирует статистику для всех кампаний, независимо от типа.
@@ -1661,6 +1672,98 @@ async def make_and_get_save_report():
 
     tasks = [get_save_rep_limited(cab) for cab in cabinets]
     await asyncio.gather(*tasks)
+
+
+async def get_region_sales():
+    """
+    Получить продажи по регионам
+    :return:
+    """
+    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
+
+    semaphore = asyncio.Semaphore(3)
+
+    async def sale_dates(cab):
+        try:
+            conn = await async_connect_to_database()
+            if not conn:
+                raise Exception(f"Ошибка подключения к БД в {cab['name']}")
+
+            req_is_rows_in_db = """
+                SELECT * from myapp_regionsales WHERE lk_id = $1 LIMIT 1 
+            """
+            all_fields = await conn.fetch(req_is_rows_in_db, cab["id"])
+
+            if all_fields:
+                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 3)]
+            else:
+                logger.info(f"Данные о продажах в регионе для {cab['name']} отсутствуют в БД")
+                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 14)]
+
+            for _date in dates:
+                param = {
+                    "type": "region_sale",
+                    "dateFrom": _date,
+                    "dateTo": _date,
+                    "API_KEY": cab["token"],
+                }
+
+                async with aiohttp.ClientSession() as session:
+                    response = await wb_api(session, param)
+                    await asyncio.sleep(25)
+                    try:
+                        data_for_upload = [
+                            (
+                                cab["id"],
+                                datetime.now().date(),
+                                row["nmID"],
+                                row["cityName"],
+                                row["countryName"],
+                                row["foName"],
+                                row["regionName"],
+                                row["sa"],
+                                row["saleInvoiceCostPrice"],
+                                row["saleInvoiceCostPricePerc"],
+                                row["saleItemInvoiceQty"]
+                            )
+                            for row in response["report"]
+                        ]
+                    except Exception as e:
+                        raise Exception(f"ошибка подготовки данных {e}")
+
+                    try:
+                        query = f"""
+                            INSERT INTO myapp_regionsales (
+                                "lk_id", "date_wb", "nmid", "cityName", "countryName", "foName", "regionName",
+                                "sa", "saleInvoiceCostPrice", "saleInvoiceCostPricePerc", "saleItemInvoiceQty"
+                            )
+                            VALUES (
+                                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                            )
+                            ON CONFLICT ("date_wb", "nmid", "sa", "cityName") DO UPDATE SET
+                                "saleInvoiceCostPrice" = EXCLUDED."saleInvoiceCostPrice",
+                                "saleInvoiceCostPricePerc" = EXCLUDED."saleInvoiceCostPricePerc",
+                                "saleItemInvoiceQty" = EXCLUDED."saleItemInvoiceQty";
+                        """
+                        await insert_in_chunks(conn, query, data_for_upload, chunk_size=1000)
+                    except Exception as e:
+                        raise Exception(f"Ошибка обновления данных. Error: {e}")
+
+        except Exception as e:
+                logger.error(f"Ошибка в save_dates: {e}")
+        finally:
+            try:
+                await conn.close()
+            except:
+                pass
+
+    async def get_region_sales_limited(cab):
+        async with semaphore:
+            return await sale_dates(cab)
+
+    tasks = [get_region_sales_limited(cab) for cab in cabinets]
+    await asyncio.gather(*tasks)
+
 
 
 # loop = asyncio.get_event_loop()
