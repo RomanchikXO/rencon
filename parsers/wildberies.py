@@ -1332,7 +1332,7 @@ async def get_advs_stat():
                 param = {"type": "fullstatsadv"}
 
                 for i in range(0, len(advs_ids), 100):
-                    param["API_KEY"] = cab["token"],
+                    param["API_KEY"] = cab["token"]
 
                     articles = [str(art) for art in advs_ids[i:i + 100]]
 
