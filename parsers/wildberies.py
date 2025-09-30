@@ -671,7 +671,7 @@ async def get_nmids():
                 else:
                     param["updatedAt"] = response["cursor"]["updatedAt"]
                     param["nmID"] = response["cursor"]["nmID"]
-                    await asyncio.sleep(60)
+                    # await asyncio.sleep(60)
 
 
 async def get_stocks_data_2_weeks():
