@@ -1319,9 +1319,6 @@ async def get_advs_stat():
             logger.error(f"Ошибка подключения к БД в {cab['name']}")
             raise
         try:
-            param = {
-                "API_KEY": cab["token"],
-            }
 
             yesterday = now() - td(days=1)
             advs_ids = await sync_to_async(list)(
@@ -1332,9 +1329,11 @@ async def get_advs_stat():
             )
 
             async with aiohttp.ClientSession() as session:
-                param["type"] = "fullstatsadv"
+                param = {"type": "fullstatsadv"}
 
                 for i in range(0, len(advs_ids), 100):
+                    param["API_KEY"] = cab["token"],
+
                     articles = [str(art) for art in advs_ids[i:i + 100]]
 
                     startperiod = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
