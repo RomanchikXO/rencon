@@ -620,6 +620,11 @@ async def get_nmids():
             }
             while True:
                 response = await wb_api(session, param)
+
+                if response.get("cursor"):
+                    if response["total"] == 0:
+                        break
+
                 if not response.get("cards"):
                     logger.error(f"Ошибка при получении артикулов для {cab['name']}: {response}")
                     raise
@@ -666,6 +671,7 @@ async def get_nmids():
                 else:
                     param["updatedAt"] = response["cursor"]["updatedAt"]
                     param["nmID"] = response["cursor"]["nmID"]
+                    await asyncio.sleep(60)
 
 
 async def get_stocks_data_2_weeks():
