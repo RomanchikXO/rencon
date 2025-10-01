@@ -491,9 +491,16 @@ async def wb_api(session, param):
         }
         view = "get"
 
-    headers = {
-        "Authorization": f"Bearer {param['API_KEY']}"  # Или просто API_KEY, если нужно
-    }
+    try:
+        headers = {
+            "Authorization": f"Bearer {param['API_KEY']}"  # Или просто API_KEY, если нужно
+        }
+    except Exception as e:
+        logger.error(
+            f"Ошибка в wb_api при формировании заголовка: {e}. Параметры: {param}"
+        )
+        # param.pop("API_KEY", None)
+        return None
 
     if view == 'get':
         async with session.get(API_URL, headers=headers, params=params, timeout=aiohttp.ClientTimeout(total=60), ssl=False) as response:
