@@ -511,7 +511,7 @@ async def wb_api(session, param):
                 logger.error(
                     f"Ошибка в wb_api (get запрос): {e}. Ответ: {response_text}. Параметры: {param}"
                 )
-                param.pop("API_KEY", None)
+                # param.pop("API_KEY", None)
                 return None
 
     if view == 'post':
