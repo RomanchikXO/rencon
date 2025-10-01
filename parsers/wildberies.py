@@ -1322,7 +1322,10 @@ async def get_supplies():
 
 async def get_advs_stat():
     cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
-    semaphore = asyncio.Semaphore(3)
+
+    # Per-token rate limiting (каждый токен = отдельный аккаунт WB)
+    token_locks = {}
+    token_last_call = {}
 
     async def get_data_advs(cab):
         conn = await async_connect_to_database()
@@ -1330,6 +1333,11 @@ async def get_advs_stat():
             logger.error(f"Ошибка подключения к БД в {cab['name']}")
             raise
         try:
+            # Инициализация блокировки для токена
+            token = cab["token"]
+            if token not in token_locks:
+                token_locks[token] = asyncio.Lock()
+                token_last_call[token] = 0
 
             yesterday = now() - td(days=1)
             advs_ids = await sync_to_async(list)(
@@ -1339,86 +1347,106 @@ async def get_advs_stat():
                 ).values_list("advert_id", flat=True)
             )
 
+            if not advs_ids:
+                logger.info(f"Нет активных РК для кабинета {cab['name']}")
+                return
+
             async with aiohttp.ClientSession() as session:
                 param = {"type": "fullstatsadv"}
 
                 for i in range(0, len(advs_ids), 100):
                     param["API_KEY"] = cab["token"]
-
                     articles = [str(art) for art in advs_ids[i:i + 100]]
 
                     startperiod = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
                     endperiod = datetime.now().strftime('%Y-%m-%d')
-                    param["settings"] = {"ids": ",".join(articles), "beginDate": startperiod, "endDate": endperiod}
-                    response = await wb_api(session, param)
+                    param["settings"] = {
+                        "ids": ",".join(articles),
+                        "beginDate": startperiod,
+                        "endDate": endperiod
+                    }
 
-                    await asyncio.sleep(65)
+                    # Rate limiting для конкретного токена
+                    async with token_locks[token]:
+                        current_time = time.time()
+                        time_since_last_call = current_time - token_last_call[token]
 
+                        # Ждём 80 секунд с последнего запроса для этого токена
+                        if time_since_last_call < 80:
+                            wait_time = 80 - time_since_last_call
+                            logger.info(f"Rate limiting для {cab['name']}: ждём {wait_time:.1f} сек")
+                            await asyncio.sleep(wait_time)
+
+                        logger.info(
+                            f"Запрос fullstats для {cab['name']}, батч {i // 100 + 1}/{(len(advs_ids) + 99) // 100}")
+                        response = await wb_api(session, param)
+                        token_last_call[token] = time.time()
+
+                    # Обработка ответа
                     data_for_upload = []
                     if not response:
+                        logger.warning(f"Пустой ответ для {cab['name']}, батч {i // 100 + 1}")
                         continue
+
                     for advert in response:
                         advert_id = advert["advertId"]
-                        for day in advert["days"]:
+                        for day in advert.get("days", []):
                             date_wb = datetime.strptime(day['date'][:10], '%Y-%m-%d').date()
-                            for app in day["apps"]:
+                            for app in day.get("apps", []):
                                 app_type = app["appType"]
-                                for nm in app["nms"]:
-                                    nmid = nm["nmId"]
-                                    orders = nm["orders"]
-                                    atbs = nm["atbs"]
-                                    canceled = nm["canceled"]
-                                    clicks = nm["clicks"]
-                                    cpc = nm["cpc"]
-                                    cr = nm["cr"]
-                                    ctr = nm["ctr"]
-                                    shks = nm["shks"]
-                                    sum_cost = nm["sum"]
-                                    sum_price = nm["sum_price"]
-                                    views = nm["views"]
-                                    data_for_upload.append(
-                                        (advert_id, date_wb, app_type, nmid, orders, atbs, canceled, clicks, cpc, cr, ctr,
-                                         shks, sum_cost, sum_price, views)
-                                    )
-                    try:
-                        query = f"""
-                            INSERT INTO myapp_advstat (
-                                "advert_id", "date_wb", "app_type", "nmid", "orders", "atbs", "canceled", "clicks",
-                                "cpc", "cr", "ctr", "shks", "sum_cost", "sum_price", "views"
-                            )
-                            VALUES (
-                                $1, $2, $3, $4, $5, $6,
-                                $7, $8, $9, $10, $11,
-                                $12, $13, $14, $15
-                            )
-                            ON CONFLICT ("nmid", "date_wb", "app_type", "advert_id") DO UPDATE SET
-                                "orders" = EXCLUDED."orders",
-                                "atbs" = EXCLUDED."atbs",
-                                "canceled" = EXCLUDED."canceled",
-                                "clicks" = EXCLUDED."clicks",
-                                "cpc" = EXCLUDED."cpc",
-                                "cr" = EXCLUDED."cr",
-                                "ctr" = EXCLUDED."ctr",
-                                "shks" = EXCLUDED."shks",
-                                "sum_cost" = EXCLUDED."sum_cost",
-                                "sum_price" = EXCLUDED."sum_price",
-                                "views" = EXCLUDED."views";
-                        """
-                        await conn.executemany(query, data_for_upload)
-                    except Exception as e:
-                        raise Exception(f"Ошибка обновления данных в myapp_advstat. Error: {e}")
+                                for nm in app.get("nms", []):
+                                    data_for_upload.append((
+                                        advert_id, date_wb, app["appType"], nm["nmId"],
+                                        nm.get("orders", 0), nm.get("atbs", 0), nm.get("canceled", 0),
+                                        nm.get("clicks", 0), nm.get("cpc", 0), nm.get("cr", 0),
+                                        nm.get("ctr", 0), nm.get("shks", 0), nm.get("sum", 0),
+                                        nm.get("sum_price", 0), nm.get("views", 0)
+                                    ))
+
+                    # Загрузка в БД
+                    if data_for_upload:
+                        try:
+                            query = """
+                                INSERT INTO myapp_advstat (
+                                    "advert_id", "date_wb", "app_type", "nmid", "orders", 
+                                    "atbs", "canceled", "clicks", "cpc", "cr", "ctr", "shks", 
+                                    "sum_cost", "sum_price", "views"
+                                )
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                                ON CONFLICT ("nmid", "date_wb", "app_type", "advert_id") 
+                                DO UPDATE SET
+                                    "orders" = EXCLUDED."orders",
+                                    "atbs" = EXCLUDED."atbs",
+                                    "canceled" = EXCLUDED."canceled",
+                                    "clicks" = EXCLUDED."clicks",
+                                    "cpc" = EXCLUDED."cpc",
+                                    "cr" = EXCLUDED."cr",
+                                    "ctr" = EXCLUDED."ctr",
+                                    "shks" = EXCLUDED."shks",
+                                    "sum_cost" = EXCLUDED."sum_cost",
+                                    "sum_price" = EXCLUDED."sum_price",
+                                    "views" = EXCLUDED."views";
+                            """
+                            await conn.executemany(query, data_for_upload)
+                            logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}")
+                        except Exception as e:
+                            logger.error(f"Ошибка обновления данных для {cab['name']}: {e}")
+                            raise
+
         except Exception as e:
-            logger.error(f"Ошибка в get_data_advs: {e}")
+            logger.error(f"Ошибка в get_data_advs для {cab['name']}: {e}")
+            raise
         finally:
             await conn.close()
 
+    # Запускаем все кабинеты параллельно
+    # Каждый токен соблюдает свой rate limit независимо
+    tasks = [get_data_advs(cab) for cab in cabinets]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def get_analitics_limited(cab):
-        async with semaphore:
-            return await get_data_advs(cab)
-
-    tasks = [get_analitics_limited(cab) for cab in cabinets]
-    await asyncio.gather(*tasks)
+    for cab, result in zip(cabinets, results):
+        if isinstance(result, Exception):
+            logger.error(f"Ошибка обработки кабинета {cab['name']}: {result}")
 
 
 async def get_advs():
