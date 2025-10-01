@@ -1320,12 +1320,23 @@ async def get_supplies():
     await asyncio.gather(*tasks)
 
 
+import time
+
+
 async def get_advs_stat():
     cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
 
-    # Per-token rate limiting (каждый токен = отдельный аккаунт WB)
+    # КРИТИЧЕСКИ ВАЖНО: создаём блокировки ДО запуска задач
     token_locks = {}
     token_last_call = {}
+
+    # Предварительно создаём блокировки для всех уникальных токенов
+    unique_tokens = set(cab["token"] for cab in cabinets)
+    for token in unique_tokens:
+        token_locks[token] = asyncio.Lock()
+        token_last_call[token] = 0
+
+    logger.info(f"Инициализировано {len(unique_tokens)} уникальных токенов для rate limiting")
 
     async def get_data_advs(cab):
         conn = await async_connect_to_database()
@@ -1333,11 +1344,7 @@ async def get_advs_stat():
             logger.error(f"Ошибка подключения к БД в {cab['name']}")
             raise
         try:
-            # Инициализация блокировки для токена
             token = cab["token"]
-            if token not in token_locks:
-                token_locks[token] = asyncio.Lock()
-                token_last_call[token] = 0
 
             yesterday = now() - td(days=1)
             advs_ids = await sync_to_async(list)(
@@ -1354,9 +1361,14 @@ async def get_advs_stat():
             async with aiohttp.ClientSession() as session:
                 param = {"type": "fullstatsadv"}
 
-                for i in range(0, len(advs_ids), 100):
+                # Уменьшаем батч до 50 для надёжности
+                BATCH_SIZE = 50
+                MIN_INTERVAL = 90  # секунды между запросами
+                MAX_RETRIES = 3
+
+                for i in range(0, len(advs_ids), BATCH_SIZE):
                     param["API_KEY"] = cab["token"]
-                    articles = [str(art) for art in advs_ids[i:i + 100]]
+                    articles = [str(art) for art in advs_ids[i:i + BATCH_SIZE]]
 
                     startperiod = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
                     endperiod = datetime.now().strftime('%Y-%m-%d')
@@ -1366,37 +1378,75 @@ async def get_advs_stat():
                         "endDate": endperiod
                     }
 
-                    # Rate limiting для конкретного токена
-                    async with token_locks[token]:
-                        current_time = time.time()
-                        time_since_last_call = current_time - token_last_call[token]
+                    # Retry логика для обработки временных ошибок
+                    response = None
+                    batch_num = i // BATCH_SIZE + 1
+                    total_batches = (len(advs_ids) + BATCH_SIZE - 1) // BATCH_SIZE
 
-                        # Ждём 80 секунд с последнего запроса для этого токена
-                        if time_since_last_call < 80:
-                            wait_time = 80 - time_since_last_call
-                            logger.info(f"Rate limiting для {cab['name']}: ждём {wait_time:.1f} сек")
-                            await asyncio.sleep(wait_time)
+                    for attempt in range(1, MAX_RETRIES + 1):
+                        # Rate limiting для конкретного токена
+                        async with token_locks[token]:
+                            current_time = time.time()
+                            time_since_last_call = current_time - token_last_call[token]
 
-                        logger.info(
-                            f"Запрос fullstats для {cab['name']}, батч {i // 100 + 1}/{(len(advs_ids) + 99) // 100}")
-                        response = await wb_api(session, param)
-                        token_last_call[token] = time.time()
+                            if time_since_last_call < MIN_INTERVAL:
+                                wait_time = MIN_INTERVAL - time_since_last_call
+                                logger.info(f"Rate limiting для {cab['name']}: ждём {wait_time:.1f} сек")
+                                await asyncio.sleep(wait_time)
+
+                            if attempt > 1:
+                                logger.info(
+                                    f"Повтор {attempt}/{MAX_RETRIES} для {cab['name']}, батч {batch_num}/{total_batches}")
+                            else:
+                                logger.info(f"Запрос fullstats для {cab['name']}, батч {batch_num}/{total_batches}")
+
+                            response = await wb_api(session, param)
+                            token_last_call[token] = time.time()
+
+                        # Проверяем успешность запроса
+                        if response is not None:
+                            break
+
+                        # Если это не последняя попытка и получили None
+                        if attempt < MAX_RETRIES:
+                            # Экспоненциальная задержка перед retry
+                            retry_delay = 10 * attempt
+                            logger.warning(
+                                f"Пустой ответ для {cab['name']}, батч {batch_num}. "
+                                f"Ждём {retry_delay} сек перед повтором"
+                            )
+                            await asyncio.sleep(retry_delay)
 
                     # Обработка ответа
                     data_for_upload = []
                     if not response:
-                        logger.warning(f"Пустой ответ для {cab['name']}, батч {i // 100 + 1}")
+                        logger.error(
+                            f"Не удалось получить данные после {MAX_RETRIES} попыток "
+                            f"для {cab['name']}, батч {batch_num}"
+                        )
                         continue
 
                     for advert in response:
                         advert_id = advert["advertId"]
                         for day in advert.get("days", []):
-                            date_wb = datetime.strptime(day['date'][:10], '%Y-%m-%d').date()
+                            try:
+                                date_wb = datetime.strptime(day['date'][:10], '%Y-%m-%d').date()
+                            except (KeyError, ValueError) as e:
+                                logger.warning(f"Ошибка парсинга даты для {cab['name']}: {e}")
+                                continue
+
                             for app in day.get("apps", []):
-                                app_type = app["appType"]
+                                app_type = app.get("appType")
+                                if not app_type:
+                                    continue
+
                                 for nm in app.get("nms", []):
+                                    nmid = nm.get("nmId")
+                                    if not nmid:
+                                        continue
+
                                     data_for_upload.append((
-                                        advert_id, date_wb, app["appType"], nm["nmId"],
+                                        advert_id, date_wb, app_type, nmid,
                                         nm.get("orders", 0), nm.get("atbs", 0), nm.get("canceled", 0),
                                         nm.get("clicks", 0), nm.get("cpc", 0), nm.get("cr", 0),
                                         nm.get("ctr", 0), nm.get("shks", 0), nm.get("sum", 0),
@@ -1428,10 +1478,12 @@ async def get_advs_stat():
                                     "views" = EXCLUDED."views";
                             """
                             await conn.executemany(query, data_for_upload)
-                            logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}")
+                            logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}, батч {batch_num}")
                         except Exception as e:
-                            logger.error(f"Ошибка обновления данных для {cab['name']}: {e}")
+                            logger.error(f"Ошибка обновления данных для {cab['name']}, батч {batch_num}: {e}")
                             raise
+                    else:
+                        logger.info(f"Нет данных для загрузки, батч {batch_num} для {cab['name']}")
 
         except Exception as e:
             logger.error(f"Ошибка в get_data_advs для {cab['name']}: {e}")
@@ -1440,9 +1492,14 @@ async def get_advs_stat():
             await conn.close()
 
     # Запускаем все кабинеты параллельно
-    # Каждый токен соблюдает свой rate limit независимо
     tasks = [get_data_advs(cab) for cab in cabinets]
     results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Подсчёт успешных и неуспешных обработок
+    successful = sum(1 for r in results if not isinstance(r, Exception))
+    failed = len(results) - successful
+
+    logger.info(f"Обработка завершена: успешно {successful}/{len(cabinets)}, ошибок {failed}")
 
     for cab, result in zip(cabinets, results):
         if isinstance(result, Exception):
