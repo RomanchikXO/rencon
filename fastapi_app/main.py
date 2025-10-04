@@ -1,15 +1,16 @@
 import json
-from typing import Dict, Union
+from collections import defaultdict
+from typing import Dict, Union, Optional, List
 
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import MetaData, Table, select, create_engine, func
+from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String
 from .database import database
 from pydantic import BaseModel, Field, RootModel
 from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 from context_logger import ContextLogger
 import logging
 from dateutil.parser import parse as parse_date
-from datetime import timedelta
+from datetime import timedelta, datetime, date as date_dt
 from fastapi import Depends
 from .auth import verify_token
 
@@ -62,15 +63,18 @@ class FinReportRequest(BaseModel):
 
 
 class FinReportResponse(BaseModel):
-    retail_price: float = Field(..., description="Цена розничная")
-    retail_amount: float = Field(..., description="Сумма реализации")
-    ppvz_for_pay: float = Field(..., description="К перечислению продавцу")
-    delivery_rub: float = Field(..., description="Стоимость доставки")
-    storage_fee: float = Field(..., description="Хранение")
-    acceptance: float = Field(..., description="Платная приемка")
+    nmid: int = Field(..., description="Артикул WB")
+    date_wb: date_dt = Field(..., description="Дата операции")
+    color: Optional[str] = Field(None, description="Цвет товара")
+    retail_price: Optional[float] = Field(None, description="Цена розничная")
+    retail_amount: Optional[float] = Field(None, description="Сумма реализации")
+    ppvz_for_pay: Optional[float] = Field(None, description="К перечислению продавцу")
+    delivery_rub: Optional[float] = Field(None, description="Стоимость доставки")
+    acceptance: Optional[float] = Field(None, description="Платная приемка")
+    warehousePrice: Optional[float] = Field(None, description="Сумма хранения")
 
 class FinReportResponseWithDeduction(BaseModel):
-    data: Dict[int, FinReportResponse]
+    data: List[FinReportResponse]
     deduction: float = Field(..., description="Удержание")
 
 @app.post(
@@ -146,18 +150,30 @@ async def fin_report_endpoint(
         if not nmids_list:
             return []
 
+        color_expr = cast(
+            func.jsonb_path_query_first(
+                nmids_table.c.characteristics,
+                '$[*] ? (@.id == 14177449).value[0]'
+            ),
+            String
+        ).label("color")
+
         # Фильтруем ProductsStat
-        query_stats = select(
+        query_stats = (select(
             findata_table.c.nmid,
             findata_table.c.retail_price,
             findata_table.c.retail_amount,
             findata_table.c.ppvz_for_pay,
             findata_table.c.delivery_rub,
             findata_table.c.acceptance,
-            findata_table.c.rr_dt,
+            findata_table.c.rr_dt, # дата операции
             findata_table.c.supplier_oper_name,
-            findata_table.c.ts_name
-        ).where(findata_table.c.nmid.in_(nmids_list))
+            findata_table.c.ts_name, # размер
+            color_expr
+        )
+        .join(nmids_table, nmids_table.c.nmid == findata_table.c.nmid)
+       .where(findata_table.c.nmid.in_(nmids_list)))
+
         query_save = select(
             savedata_table.c.nmid,
             savedata_table.c.warehousePrice,
@@ -198,47 +214,45 @@ async def fin_report_endpoint(
         deduction_rows = await database.fetch_all(query_deduction)
         deductions = sum(row.deduction for row in deduction_rows) if deduction_rows else 0
 
-        all_data = {}
-        for i in art_per_day:
-            nmid = i["nmid"]
-            retail_price = i["retail_price"]
-            retail_amount = i["retail_amount"]
-            ppvz_for_pay = i["ppvz_for_pay"]
-            delivery_rub = i["delivery_rub"]
-            acceptance = i["acceptance"]
+        def merge_data(arr1, arr2):
+            merged = defaultdict(dict)
 
-            if nmid in all_data:
-                all_data[nmid]["retail_price"] += retail_price
-                all_data[nmid]["retail_amount"] += retail_amount
-                all_data[nmid]["ppvz_for_pay"] += ppvz_for_pay
-                all_data[nmid]["delivery_rub"] += delivery_rub
-                all_data[nmid]["acceptance"] += acceptance
-            else:
-                all_data[nmid] = {
-                    "retail_price": retail_price,
-                    "retail_amount": retail_amount,
-                    "ppvz_for_pay": ppvz_for_pay,
-                    "delivery_rub": delivery_rub,
-                    "acceptance": acceptance,
-                    "storage_fee": 0,
-                }
+            # первый массив (финансовые данные)
+            for i in arr1:
+                key = (i["nmid"], i["rr_dt"])  # ключ = nmid + дата
+                merged[key].update({
+                    "nmid": i["nmid"],
+                    "retail_price": i["retail_price"],
+                    "retail_amount": i["retail_amount"],
+                    "ppvz_for_pay": i["ppvz_for_pay"],
+                    "delivery_rub": i["delivery_rub"],
+                    "acceptance": i["acceptance"],
+                    "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
+                    "color": i["color"].strip('"'),
+                })
 
-        for i in art_per_day_saves:
-            nmid = i["nmid"]
-            warehousePrice = i["warehousePrice"]
-            if all_data.get(nmid):
-                if all_data[nmid].get("storage_fee"):
-                    all_data[nmid]["storage_fee"] += warehousePrice
-                else:
-                    all_data[nmid]["storage_fee"] = warehousePrice
+            # второй массив (цены склада)
+            for i in arr2:
+                key = (i["nmid"], i["date_wb"])
+                merged[key].update({
+                    "nmid": i["nmid"],
+                    "date_wb": datetime.fromisoformat(str(i["date_wb"])).date(),
+                    "warehousePrice": i["warehousePrice"],
+                })
+
+            return list(merged.values())
+
+        result = merge_data(art_per_day, art_per_day_saves)
 
         return {
-            "data": all_data,
+            "data": result,
             "deduction": deductions
         }
 
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Ошибка в fin_report_endpoint")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Pydantic-модель для входящего POST
