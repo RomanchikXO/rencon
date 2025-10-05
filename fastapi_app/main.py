@@ -36,9 +36,19 @@ findata_table = metadata.tables.get("myapp_findata")
 savedata_table = metadata.tables.get("myapp_savedata")
 sales_reg_table = metadata.tables.get("myapp_regionsales")
 
-if None in [products_table, nmids_table, wblk_table, stocks_table]:
+if None in [products_table, nmids_table, wblk_table, stocks_table, advstat_table, findata_table, savedata_table,
+            sales_reg_table]:
     logger.error("Одна из таблиц (ProductsStat, nmids, WbLk, Stocks) не найдена.")
     raise RuntimeError()
+
+
+color_expr = cast(
+        func.jsonb_path_query_first(
+            nmids_table.c.characteristics,
+            '$[*] ? (@.id == 14177449).value[0]'
+        ),
+        String
+    ).label("color")
 
 
 # Подключаем/отключаем БД при старте/остановке приложения
@@ -150,14 +160,6 @@ async def fin_report_endpoint(
         if not nmids_list:
             return []
 
-        color_expr = cast(
-            func.jsonb_path_query_first(
-                nmids_table.c.characteristics,
-                '$[*] ? (@.id == 14177449).value[0]'
-            ),
-            String
-        ).label("color")
-
         # Фильтруем ProductsStat
         query_stats = (select(
             findata_table.c.nmid,
@@ -266,13 +268,16 @@ class ProductsStatRequest(BaseModel):
 
 
 class ProductStatResponse(BaseModel):
-    rub: float = Field(..., description="Сумма заказов в рублях")
-    sht: int = Field(..., description="Количество заказов")
+    nmid: int = Field(..., description="Артикул WB")
+    date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
+    color: Optional[str] = Field(None, description="Цвет товара")
+    ordersSumRub: float = Field(..., description="Сумма заказов в рублях")
+    ordersCount: int = Field(..., description="Количество заказов")
 
 
 @app.post(
     "/products_stat/",
-    response_model=Dict[int, ProductStatResponse],
+    response_model=List[ProductStatResponse],
     summary="Получить информацию о заказах",
     description="Возвращает суммарную информацию о заказах по NMID: количество и сумма в рублях. "
                 "Можно фильтровать по дате, артикулам и цветам."
@@ -344,26 +349,30 @@ async def products_stat_endpoint(
             return []
 
         # Фильтруем ProductsStat
-        query_stats = select(products_table).where(products_table.c.nmid.in_(nmids_list))
+        query_stats = (select(
+            products_table.c.nmid,
+            products_table.c.date_wb,
+            products_table.c.ordersSumRub,
+            products_table.c.ordersCount,
+            color_expr
+        )
+       .join(nmids_table, nmids_table.c.nmid == products_table.c.nmid)
+       .where(products_table.c.nmid.in_(nmids_list)))
+
         if date_from:
             query_stats = query_stats.where(products_table.c.date_wb >= date_from)
         if date_to:
             query_stats = query_stats.where(products_table.c.date_wb <= date_to)
 
         stats_rows = await database.fetch_all(query_stats)
-        art_per_day = [dict(row._mapping) for row in stats_rows]
+        all_data = []
+        for row in stats_rows:
+            r = dict(row._mapping)
+            if isinstance(r["date_wb"], datetime):
+                r["date_wb"] = datetime.fromisoformat(str(r["date_wb"])).date()
+            r["color"] = r["color"].strip('"')
+            all_data.append(r)
 
-        all_data = {}
-        for i in art_per_day:
-            nmid = i["nmid"]
-            rub = i["ordersSumRub"]
-            sht = i["ordersCount"]
-
-            if nmid in all_data:
-                all_data[nmid]["rub"] += rub
-                all_data[nmid]["sht"] += sht
-            else:
-                all_data[nmid] = {"rub": rub, "sht": sht}
         return all_data
 
     except Exception as e:
@@ -380,14 +389,18 @@ class ProductsQuantRequest(BaseModel):
 
 
 class ProductQuantResponse(BaseModel):
-    quantity: float
-    inwaytoclient: int
-    inwayfromclient: int
+    nmid: int = Field(..., description="Артикул WB")
+    quantity: float = Field(..., description="Остатки")
+    inwaytoclient: int = Field(..., description="В пути к клиенту")
+    inwayfromclient: int = Field(..., description="В пути от клиента")
+    warehouse: str = Field(..., description="Склад")
+    size: str = Field(..., description="Размер")
+    color: str = Field(..., description="Цвет")
 
 
 @app.post(
     "/quantity/",
-    response_model=Dict[int, ProductQuantResponse],
+    response_model=List[ProductQuantResponse],
     summary="Получить остатки для артикулов"
 )
 async def products_quantity_endpoint(
@@ -403,57 +416,20 @@ async def products_quantity_endpoint(
 
         lk_id = lk_row["id"]
 
-        # Получаем список nmid по lk
-        query_nmids = select(
-            nmids_table.c.nmid,
-            nmids_table.c.characteristics
-        ).where(nmids_table.c.lk_id == lk_id)
+        query_stocks = (select(
+            stocks_table.c.nmid,
+            stocks_table.c.techsize,
+            stocks_table.c.inwaytoclient,
+            stocks_table.c.inwayfromclient,
+            stocks_table.c.quantity,
+            stocks_table.c.warehousename,
+            color_expr,
+            ).join(nmids_table, stocks_table.c.nmid == nmids_table.c.nmid)
+            .where(nmids_table.c.lk_id == lk_id)
+        )
 
         if payload.articles:
-            query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
-
-        nmids_rows = await database.fetch_all(query_nmids)
-
-        nmids_list = []
-
-        for row in nmids_rows:
-            nmid = row["nmid"]
-            if payload.colors:
-                characteristics = row["characteristics"]  # JSONField из Django
-                if characteristics is None:
-                    continue
-
-                try:
-                    parsed = (
-                        characteristics
-                        if isinstance(characteristics, list)
-                        else json.loads(characteristics)
-                    )
-                except Exception:
-                    continue
-
-                color_entry = next(
-                    (item for item in parsed if item.get("id") == 14177449), None
-                )
-                if not color_entry:
-                    continue
-
-                value = color_entry.get("value")
-                if not value or not isinstance(value, list):
-                    continue
-
-                color_value = value[0].lower()  # берём первое значение
-                if color_value in [c.lower() for c in payload.colors]:
-                    nmids_list.append(nmid)
-            else:
-                nmids_list.append(nmid)
-
-        if not nmids_list:
-            return []
-
-        query_stocks = select(stocks_table).where(
-            stocks_table.c.nmid.in_(nmids_list)
-        )
+            query_stocks = query_stocks.where(stocks_table.c.nmid.in_(payload.articles))
 
         if payload.sizes:
             query_stocks = query_stocks.where(stocks_table.c.techsize.in_(payload.sizes))
@@ -467,22 +443,24 @@ async def products_quantity_endpoint(
         stock_rows = await database.fetch_all(query_stocks)
         row_data = [dict(row._mapping) for row in stock_rows]
 
-        all_data = {}
-        for i in row_data:
-            nmid = i["nmid"]
-            inwaytoclient = i["inwaytoclient"]
-            inwayfromclient = i["inwayfromclient"]
-            quantity = i["quantity"]
+        colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
 
-            if nmid in all_data:
-                all_data[nmid]["quantity"] += quantity
-                all_data[nmid]["inwaytoclient"] += inwaytoclient
-                all_data[nmid]["inwayfromclient"] += inwayfromclient
-            else:
-                all_data[nmid] = {}
-                all_data[nmid]["quantity"] = quantity
-                all_data[nmid]["inwaytoclient"] = inwaytoclient
-                all_data[nmid]["inwayfromclient"] = inwayfromclient
+        all_data = []
+        for i in row_data:
+            color = i["color"].strip('"').lower()
+            if colors_lower and color not in colors_lower:
+                continue
+
+            all_data.append(dict(
+                nmid=i["nmid"],
+                inwaytoclient=i["inwaytoclient"],
+                inwayfromclient=i["inwayfromclient"],
+                quantity=i["quantity"],
+                size=i["techsize"],
+                warehouse=i["warehousename"],
+                color=color
+            ))
+
         return all_data
 
     except Exception as e:
@@ -517,9 +495,16 @@ async def get_supplier_oper_name(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class AdvCostResponse(BaseModel):
+    nmid: int = Field(..., description="Артикул WB")
+    cost: float = Field(..., description="Затраты")
+    color: str = Field(..., description="Цвет")
+    date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
+
+
 @app.post(
     "/adv_cost/",
-    response_model=Dict[int, float],
+    response_model=List[AdvCostResponse],
     summary="Получить затраты на рекламу поартикульно"
 )
 async def get_adv_cost(
@@ -544,7 +529,8 @@ async def get_adv_cost(
             select(
                 advstat_table.c.nmid,
                 advstat_table.c.sum_cost,
-                nmids_table.c.characteristics
+                advstat_table.c.date_wb,
+                color_expr,
             ).join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
             .where(nmids_table.c.lk_id == lk_id)
         )
@@ -561,25 +547,20 @@ async def get_adv_cost(
         colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
 
         nmids_rows = await database.fetch_all(query_nmids)
-        result: dict[int, float] = {}
+        result = []
         for row in nmids_rows:
-            if colors_lower:
-                characteristics = row["characteristics"]
-                match = next(
-                    (
-                        True
-                        for item in reversed(characteristics)  # итерация с конца
-                        if item["id"] == 14177449 and item["value"][0].lower() in colors_lower
-                    ),
-                    False
-                )
+            color = row["color"].strip('"').lower()
+            if colors_lower and color not in colors_lower:
+                continue
 
-                if not match:
-                    continue
+            result.append(dict(
+                nmid=row["nmid"],
+                cost=row["sum_cost"] or 0,
+                color=color,
+                date_wb=datetime.fromisoformat(str(row["date_wb"])).date()
+            ))
 
-            nmid = row["nmid"]
-            cost = row["sum_cost"] or 0
-            result[nmid] = result.get(nmid, 0) + cost
+
         return result
 
     except Exception as e:
@@ -590,11 +571,14 @@ class AdvConversionResponse(BaseModel):
     clicks: int
     views: int
     atbs: int
+    nmid: int = Field(..., description="Артикул WB")
+    date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
+    color: Optional[str] = Field(None, description="Цвет товара")
 
 
 @app.post(
     "/adv_conversion/",
-    response_model=Dict[int, AdvConversionResponse],
+    response_model=List[AdvConversionResponse],
     summary="Получить данные по конверсии"
 )
 async def get_adv_conversion(
@@ -621,7 +605,10 @@ async def get_adv_conversion(
                 advstat_table.c.clicks,
                 advstat_table.c.views,
                 advstat_table.c.atbs,
-                nmids_table.c.characteristics
+                nmids_table.c.characteristics,
+                advstat_table.c.date_wb,
+                advstat_table.c.advert_id,
+                color_expr,
             ).join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
             .where(nmids_table.c.lk_id == lk_id)
         )
@@ -638,36 +625,20 @@ async def get_adv_conversion(
         colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
 
         nmids_rows = await database.fetch_all(query_nmids)
-        result = {}
+        result = []
         for row in nmids_rows:
-            if colors_lower:
-                characteristics = row["characteristics"]
-                match = next(
-                    (
-                        True
-                        for item in reversed(characteristics)  # итерация с конца
-                        if item["id"] == 14177449 and item["value"][0].lower() in colors_lower
-                    ),
-                    False
-                )
+            color = row["color"].strip('"').lower()
+            if colors_lower and color not in colors_lower:
+                continue
 
-                if not match:
-                    continue
-
-            nmid = row["nmid"]
-            clicks = row["clicks"] or 0
-            views = row["views"] or 0
-            atbs = row["atbs"] or 0
-            if result.get(nmid):
-                result[nmid]["clicks"] += clicks
-                result[nmid]["views"] += views
-                result[nmid]["atbs"] += atbs
-            else:
-                result[nmid] = {
-                    "clicks": clicks,
-                    "views": views,
-                    "atbs": atbs
-                }
+            result.append(dict(
+                nmid=row["nmid"],
+                clicks=row["clicks"] or 0,
+                views=row["views"] or 0,
+                atbs=row["atbs"] or 0,
+                date_wb=datetime.fromisoformat(str(row["date_wb"])).date(),
+                color=color,
+            ))
         return result
 
     except Exception as e:
@@ -677,10 +648,13 @@ async def get_adv_conversion(
 class ProductSaleResponse(BaseModel):
     rub: float = Field(..., description="Сумма заказов в рублях")
     sht: int = Field(..., description="Количество заказов")
+    nmid: int = Field(..., description="Артикул WB")
+    color: Optional[str] = Field(None, description="Цвет товара")
+    date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
 
 @app.post(
     "/region_sales/",
-    response_model=Dict[int, ProductSaleResponse],
+    response_model=List[ProductSaleResponse],
     summary="Получить данные по продажам по регионам"
 )
 async def get_adv_reg_sales(
@@ -700,61 +674,21 @@ async def get_adv_reg_sales(
 
         lk_id = lk_row["id"]
 
-        # Получаем список nmid по lk
-        query_nmids = select(
-            nmids_table.c.nmid,
-            nmids_table.c.characteristics
-        ).where(nmids_table.c.lk_id == lk_id)
-
-        if payload.articles:
-            query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
-
-        nmids_rows = await database.fetch_all(query_nmids)
-
-        nmids_list = []
-
-        for row in nmids_rows:
-            nmid = row["nmid"]
-            if payload.colors:
-                characteristics = row["characteristics"]  # JSONField из Django
-                if characteristics is None:
-                    continue
-
-                try:
-                    parsed = (
-                        characteristics
-                        if isinstance(characteristics, list)
-                        else json.loads(characteristics)
-                    )
-                except Exception:
-                    continue
-
-                color_entry = next(
-                    (item for item in parsed if item.get("id") == 14177449), None
-                )
-                if not color_entry:
-                    continue
-
-                value = color_entry.get("value")
-                if not value or not isinstance(value, list):
-                    continue
-
-                color_value = value[0].lower()  # берём первое значение
-                if color_value in [c.lower() for c in payload.colors]:
-                    nmids_list.append(nmid)
-            else:
-                nmids_list.append(nmid)
-
-        if not nmids_list:
-            return []
+        colors_lower = [c.lower() for c in payload.colors] if payload.colors else []
 
         # Фильтруем ProductsStat
-        query_stats = select(
+        query_stats = (select(
             sales_reg_table.c.nmid,
             sales_reg_table.c.date_wb,
             sales_reg_table.c.saleInvoiceCostPrice,
-            sales_reg_table.c.saleItemInvoiceQty
-        ).where(sales_reg_table.c.nmid.in_(nmids_list))
+            sales_reg_table.c.saleItemInvoiceQty,
+            color_expr
+            ).join(nmids_table, sales_reg_table.c.nmid == nmids_table.c.nmid)
+            .where(nmids_table.c.lk_id == lk_id)
+       )
+
+        if payload.articles:
+            query_stats = query_stats.where(query_stats.c.nmid.in_(payload.articles))
         if date_from:
             query_stats = query_stats.where(sales_reg_table.c.date_wb >= date_from)
         if date_to:
@@ -763,18 +697,24 @@ async def get_adv_reg_sales(
         stats_rows = await database.fetch_all(query_stats)
         art_per_day = [dict(row._mapping) for row in stats_rows]
 
-        all_data = {}
+        all_data = []
         for i in art_per_day:
+            color = i["color"].strip('"').lower()
+            if colors_lower and color not in colors_lower:
+                continue
             nmid = i["nmid"]
             rub = i["saleInvoiceCostPrice"]
             sht = i["saleItemInvoiceQty"]
 
+            all_data.append(dict(
+                nmid=nmid,
+                rub=rub,
+                sht=sht,
+                color=color,
+                date_wb=datetime.fromisoformat(str(i["date_wb"])).date(),
+            ))
 
-            if nmid in all_data:
-                all_data[nmid]["rub"] += rub
-                all_data[nmid]["sht"] += sht
-            else:
-                all_data[nmid] = {"rub": rub, "sht": sht}
+
         return all_data
 
     except Exception as e:
