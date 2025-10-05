@@ -230,7 +230,7 @@ async def fin_report_endpoint(
                     "delivery_rub": i["delivery_rub"],
                     "acceptance": i["acceptance"],
                     "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
-                    "color": i["color"].strip('"'),
+                    "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                 })
 
             # второй массив (цены склада)
@@ -447,7 +447,7 @@ async def products_quantity_endpoint(
 
         all_data = []
         for i in row_data:
-            color = i["color"].strip('"').lower()
+            color = i["color"].strip('"').lower() if i.get("color") else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
 
@@ -699,7 +699,7 @@ async def get_adv_reg_sales(
 
         all_data = []
         for i in art_per_day:
-            color = i["color"].strip('"').lower()
+            color = i["color"].strip('"').lower() if i.get("color") else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
             nmid = i["nmid"]
