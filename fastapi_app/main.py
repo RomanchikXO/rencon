@@ -82,6 +82,7 @@ class FinReportResponse(BaseModel):
     delivery_rub: Optional[float] = Field(None, description="Стоимость доставки")
     acceptance: Optional[float] = Field(None, description="Платная приемка")
     warehousePrice: Optional[float] = Field(None, description="Сумма хранения")
+    supplier_oper_name: Optional[str] = Field(None, description="Основание для оплаты")
 
 class FinReportResponseWithDeduction(BaseModel):
     data: List[FinReportResponse]
@@ -231,6 +232,7 @@ async def fin_report_endpoint(
                     "acceptance": i["acceptance"],
                     "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
+                    "supplier_oper_name": i["supplier_oper_name"],
                 })
 
             # второй массив (цены склада)
