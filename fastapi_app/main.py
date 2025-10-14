@@ -198,7 +198,7 @@ async def fin_report_endpoint(
                     "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": i["supplier_oper_name"],
-                    "warehousePrice": ""
+                    "warehousePrice": 0
                 })
 
             # второй массив (цены склада)
