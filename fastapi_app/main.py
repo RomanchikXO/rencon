@@ -212,7 +212,7 @@ async def fin_report_endpoint(
                     "ppvz_for_pay": 0,
                     "delivery_rub": 0,
                     "acceptance": 0,
-                    "color": 0,
+                    "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": "",
                 })
 
