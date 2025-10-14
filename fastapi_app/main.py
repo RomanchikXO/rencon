@@ -42,15 +42,13 @@ if None in [products_table, nmids_table, wblk_table, stocks_table, advstat_table
     raise RuntimeError()
 
 
-color_expr = func.lower(
-    cast(
+color_expr = cast(
         func.jsonb_path_query_first(
             nmids_table.c.characteristics,
             '$[*] ? (@.id == 14177449).value[0]'
         ),
         String
-    )
-).label("color")
+    ).label("color")
 
 
 # Подключаем/отключаем БД при старте/остановке приложения
