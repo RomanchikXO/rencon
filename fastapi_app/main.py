@@ -103,7 +103,7 @@ async def fin_report_endpoint(
     try:
         # Парсим даты
         date_from = (parse_date(payload.date_from) - timedelta(days=1)).date() if payload.date_from else None
-        date_to = (parse_date(payload.date_to) + timedelta(days=1)).date() if payload.date_to else None
+        date_to = parse_date(payload.date_to).date() if payload.date_to else None
 
         # Получаем lk
         query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
@@ -112,6 +112,54 @@ async def fin_report_endpoint(
             raise HTTPException(status_code=404, detail="WbLk не найден")
 
         lk_id = lk_row["id"]
+
+        # Получаем список nmid по lk
+        query_nmids = select(
+            nmids_table.c.nmid,
+            nmids_table.c.characteristics
+        ).where(nmids_table.c.lk_id == lk_id)
+
+        if payload.articles:
+            query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
+
+        nmids_rows = await database.fetch_all(query_nmids)
+
+        nmids_list = []
+
+        for row in nmids_rows:
+            nmid = row["nmid"]
+            if payload.colors:
+                characteristics = row["characteristics"]  # JSONField из Django
+                if characteristics is None:
+                    continue
+
+                try:
+                    parsed = (
+                        characteristics
+                        if isinstance(characteristics, list)
+                        else json.loads(characteristics)
+                    )
+                except Exception:
+                    continue
+
+                color_entry = next(
+                    (item for item in parsed if item.get("id") == 14177449), None
+                )
+                if not color_entry:
+                    continue
+
+                value = color_entry.get("value")
+                if not value or not isinstance(value, list):
+                    continue
+
+                color_value = value[0].lower()  # берём первое значение
+                if color_value in [c.lower() for c in payload.colors]:
+                    nmids_list.append(nmid)
+            else:
+                nmids_list.append(nmid)
+
+        if not nmids_list:
+            return []
 
         # Фильтруем ProductsStat
         query_stats = (select(
@@ -127,7 +175,7 @@ async def fin_report_endpoint(
             color_expr
         )
         .join(nmids_table, nmids_table.c.nmid == findata_table.c.nmid)
-        .where(findata_table.c.lk_id == lk_id))
+       .where(findata_table.c.nmid.in_(nmids_list)))
 
         query_save = (select(
             savedata_table.c.nmid,
@@ -137,17 +185,14 @@ async def fin_report_endpoint(
             color_expr
         )
         .join(nmids_table, nmids_table.c.nmid == savedata_table.c.nmid)
-        .where(savedata_table.c.lk_id == lk_id))
+        .where(savedata_table.c.nmid.in_(nmids_list)))
 
-        if payload.articles:
-            query_stats = query_stats.where(findata_table.c.nmid.in_(payload.articles))
-            query_save = query_save.where(savedata_table.c.nmid.in_(payload.articles))
         if date_from:
             query_stats = query_stats.where(findata_table.c.rr_dt > date_from)
             query_save = query_save.where(savedata_table.c.date_wb > date_from)
         if date_to:
-            query_stats = query_stats.where(findata_table.c.rr_dt < date_to)
-            query_save = query_save.where(savedata_table.c.date_wb < date_to)
+            query_stats = query_stats.where(findata_table.c.rr_dt <= date_to)
+            query_save = query_save.where(savedata_table.c.date_wb <= date_to)
         if payload.supplier_oper_name:
             supplier_oper_name = [i.lower() for i in payload.supplier_oper_name]
             query_stats = query_stats.where(findata_table.c.supplier_oper_name.in_(supplier_oper_name))
@@ -162,11 +207,6 @@ async def fin_report_endpoint(
         save_rows = await database.fetch_all(query_save)
         art_per_day_saves = [dict(row._mapping) for row in save_rows]
 
-        if payload.colors:
-            colors = [i.lower() for i in payload.colors]
-            art_per_day = [_ for _ in art_per_day if _['color'] in colors]
-            art_per_day_saves = [_ for _ in art_per_day_saves if _['color'] in colors]
-
         # Отдельный запрос для deduction с сортировкой по дате
         query_deduction = select(
             findata_table.c.deduction,
@@ -176,7 +216,7 @@ async def fin_report_endpoint(
         if date_from:
             query_deduction = query_deduction.where(findata_table.c.rr_dt > date_from)
         if date_to:
-            query_deduction = query_deduction.where(findata_table.c.rr_dt < date_to)
+            query_deduction = query_deduction.where(findata_table.c.rr_dt <= date_to)
 
         deduction_rows = await database.fetch_all(query_deduction)
         deductions = sum(row.deduction for row in deduction_rows) if deduction_rows else 0
