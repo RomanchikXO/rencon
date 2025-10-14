@@ -105,7 +105,7 @@ async def fin_report_endpoint(
     try:
         # Парсим даты
         date_from = (parse_date(payload.date_from) - timedelta(days=1)).date() if payload.date_from else None
-        date_to = parse_date(payload.date_to).date() if payload.date_to else None
+        date_to = (parse_date(payload.date_to) + timedelta(days=1)).date() if payload.date_to else None
 
         # Получаем lk
         query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
@@ -148,8 +148,8 @@ async def fin_report_endpoint(
             query_stats = query_stats.where(findata_table.c.rr_dt > date_from)
             query_save = query_save.where(savedata_table.c.date_wb > date_from)
         if date_to:
-            query_stats = query_stats.where(findata_table.c.rr_dt <= date_to)
-            query_save = query_save.where(savedata_table.c.date_wb <= date_to)
+            query_stats = query_stats.where(findata_table.c.rr_dt < date_to)
+            query_save = query_save.where(savedata_table.c.date_wb < date_to)
         if payload.supplier_oper_name:
             supplier_oper_name = [i.lower() for i in payload.supplier_oper_name]
             query_stats = query_stats.where(findata_table.c.supplier_oper_name.in_(supplier_oper_name))
@@ -179,7 +179,7 @@ async def fin_report_endpoint(
         if date_from:
             query_deduction = query_deduction.where(findata_table.c.rr_dt > date_from)
         if date_to:
-            query_deduction = query_deduction.where(findata_table.c.rr_dt <= date_to)
+            query_deduction = query_deduction.where(findata_table.c.rr_dt < date_to)
 
         deduction_rows = await database.fetch_all(query_deduction)
         deductions = sum(row.deduction for row in deduction_rows) if deduction_rows else 0
