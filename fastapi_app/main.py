@@ -168,7 +168,6 @@ async def fin_report_endpoint(
             colors = [i.lower() for i in payload.colors]
             art_per_day = [_ for _ in art_per_day if _['color'] in colors]
             art_per_day_saves = [_ for _ in art_per_day_saves if _['color'] in colors]
-        print(f"сумма {sum([i['retail_price'] for i in art_per_day])}")
 
         # Отдельный запрос для deduction с сортировкой по дате
         query_deduction = select(
@@ -185,12 +184,11 @@ async def fin_report_endpoint(
         deductions = sum(row.deduction for row in deduction_rows) if deduction_rows else 0
 
         def merge_data(arr1, arr2):
-            merged = defaultdict(dict)
+            response = []
 
             # первый массив (финансовые данные)
             for i in arr1:
-                key = (i["nmid"], i["rr_dt"])  # ключ = nmid + дата
-                merged[key].update({
+                response.append({
                     "nmid": i["nmid"],
                     "retail_price": i["retail_price"],
                     "retail_amount": i["retail_amount"],
@@ -200,18 +198,25 @@ async def fin_report_endpoint(
                     "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": i["supplier_oper_name"],
+                    "warehousePrice": ""
                 })
 
             # второй массив (цены склада)
             for i in arr2:
-                key = (i["nmid"], i["date_wb"])
-                merged[key].update({
+                response.append({
                     "nmid": i["nmid"],
                     "date_wb": datetime.fromisoformat(str(i["date_wb"])).date(),
                     "warehousePrice": i["warehousePrice"],
+                    "retail_price": 0,
+                    "retail_amount": 0,
+                    "ppvz_for_pay": 0,
+                    "delivery_rub": 0,
+                    "acceptance": 0,
+                    "color": 0,
+                    "supplier_oper_name": "",
                 })
 
-            return list(merged.values())
+            return response
 
         result = merge_data(art_per_day, art_per_day_saves)
 
