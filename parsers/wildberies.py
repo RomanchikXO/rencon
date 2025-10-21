@@ -1787,7 +1787,7 @@ async def get_region_sales():
             all_fields = await conn.fetch(req_is_rows_in_db, cab["id"])
 
             if all_fields:
-                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 3)]
+                dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(35, 52)]
             else:
                 logger.info(f"Данные о продажах в регионе для {cab['name']} отсутствуют в БД")
                 dates = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(1, 16)]
