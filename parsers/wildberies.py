@@ -1249,12 +1249,12 @@ async def get_stat_products():
                             await conn.close()
     periods = [
         {
-            "start": (datetime.now() - timedelta(days=52)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=45)).strftime('%Y-%m-%d')
+            "start": (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+            "end": datetime.now().strftime('%Y-%m-%d')
         },
         {
-            "start": (datetime.now() - timedelta(days=44)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=36)).strftime('%Y-%m-%d')
+            "start": (datetime.now() - timedelta(days=15)).strftime('%Y-%m-%d'),
+            "end": (datetime.now() - timedelta(days=8)).strftime('%Y-%m-%d')
         }
     ]
     for index, period in enumerate(periods):
