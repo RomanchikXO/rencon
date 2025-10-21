@@ -382,7 +382,7 @@ async def products_stat_endpoint(
             r = dict(row._mapping)
             if isinstance(r["date_wb"], datetime):
                 r["date_wb"] = datetime.fromisoformat(str(r["date_wb"])).date()
-            r["color"] = r["color"].strip('"')
+            r["color"] = r["color"].strip('"') if r["color"] else 'Цвет не указан'
             all_data.append(r)
 
         return all_data
