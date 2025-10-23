@@ -561,7 +561,7 @@ async def get_adv_cost(
         nmids_rows = await database.fetch_all(query_nmids)
         result = []
         for row in nmids_rows:
-            color = row["color"].strip('"').lower()
+            color = row["color"].strip('"').lower() if row["color"] else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
 
@@ -639,7 +639,7 @@ async def get_adv_conversion(
         nmids_rows = await database.fetch_all(query_nmids)
         result = []
         for row in nmids_rows:
-            color = row["color"].strip('"').lower()
+            color = row["color"].strip('"').lower() if row["color"] else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
 
