@@ -73,7 +73,7 @@ class FinReportRequest(BaseModel):
 
 
 class FinReportResponse(BaseModel):
-    Vendorcode: Optional[str] = Field(None, description="Артикул продавца")
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
     date_wb: date_dt = Field(..., description="Дата операции")
     sale_dt: date_dt = Field(..., description="Дата продажи")
@@ -165,7 +165,7 @@ async def fin_report_endpoint(
 
         # Фильтруем ProductsStat
         query_stats = (select(
-            nmids_table.c.Vendorcode,
+            nmids_table.c.vendorcode,
             findata_table.c.nmid,
             findata_table.c.retail_price,
             findata_table.c.retail_amount,
@@ -182,7 +182,7 @@ async def fin_report_endpoint(
        .where(findata_table.c.nmid.in_(nmids_list)))
 
         query_save = (select(
-            nmids_table.c.Vendorcode,
+            nmids_table.c.vendorcode,
             savedata_table.c.nmid,
             savedata_table.c.warehousePrice,
             savedata_table.c.date_wb,
@@ -232,7 +232,7 @@ async def fin_report_endpoint(
             # первый массив (финансовые данные)
             for i in arr1:
                 response.append({
-                    "Vendorcode": i["Vendorcode"],
+                    "vendorcode": i["vendorcode"],
                     "nmid": i["nmid"],
                     "retail_price": i["retail_price"],
                     "retail_amount": i["retail_amount"],
@@ -249,7 +249,7 @@ async def fin_report_endpoint(
             # второй массив (цены склада)
             for i in arr2:
                 response.append({
-                    "Vendorcode": i["Vendorcode"],
+                    "vendorcode": i["vendorcode"],
                     "nmid": i["nmid"],
                     "date_wb": datetime.fromisoformat(str(i["date_wb"])).date(),
                     "warehousePrice": i["warehousePrice"],
