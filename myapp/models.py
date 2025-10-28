@@ -277,6 +277,7 @@ class FinData(models.Model):
     storage_fee = models.FloatField(null=True) # Хранение
     deduction = models.FloatField(null=True) # Удержание
     acceptance = models.FloatField(null=True) # Платная приемка
+    penalty = models.FloatField(null=True, blank=True) # Штрафы
 
     class Meta:
         verbose_name_plural = "ФИН отчет"
