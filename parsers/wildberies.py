@@ -1619,6 +1619,7 @@ async def get_fin_report():
                         row.get("storage_fee"),
                         row.get("deduction"),
                         float(row["acceptance"]),
+                        float(row["penalty"]),
                     )
                     for row in response
                 ]
@@ -1630,10 +1631,10 @@ async def get_fin_report():
                     INSERT INTO myapp_findata (
                         "lk_id", "rrd_id", "rr_dt", "nmid", "order_dt", "sale_dt", "shk_id", "ts_name", "supplier_oper_name",
                         "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "storage_fee", "deduction",
-                        "acceptance"
+                        "acceptance", "penalty"
                     )
                     VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
                     )
                     ON CONFLICT ("rrd_id") DO UPDATE SET
                         "sale_dt" = EXCLUDED."sale_dt",
@@ -1643,7 +1644,8 @@ async def get_fin_report():
                         "delivery_rub" = EXCLUDED."delivery_rub",
                         "storage_fee" = EXCLUDED."storage_fee",
                         "deduction" = EXCLUDED."deduction",
-                        "acceptance" = EXCLUDED."acceptance";
+                        "acceptance" = EXCLUDED."acceptance",
+                        "penalty" = EXCLUDED."penalty";
                 """
                 await insert_in_chunks(conn, query, data_for_upload, chunk_size=1000)
             except Exception as e:
