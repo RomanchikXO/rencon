@@ -75,6 +75,7 @@ class FinReportRequest(BaseModel):
 class FinReportResponse(BaseModel):
     nmid: int = Field(..., description="Артикул WB")
     date_wb: date_dt = Field(..., description="Дата операции")
+    sale_dt: date_dt = Field(..., description="Дата продажи")
     color: Optional[str] = Field(None, description="Цвет товара")
     retail_price: Optional[float] = Field(None, description="Цена розничная")
     retail_amount: Optional[float] = Field(None, description="Сумма реализации")
@@ -170,6 +171,7 @@ async def fin_report_endpoint(
             findata_table.c.delivery_rub,
             findata_table.c.acceptance,
             findata_table.c.rr_dt, # дата операции
+            findata_table.c.sale_dt,  # дата операции
             findata_table.c.supplier_oper_name,
             findata_table.c.ts_name, # размер
             color_expr
@@ -234,6 +236,7 @@ async def fin_report_endpoint(
                     "delivery_rub": i["delivery_rub"],
                     "acceptance": i["acceptance"],
                     "date_wb": datetime.fromisoformat(str(i["rr_dt"])).date(),  # приводим к единому имени
+                    "sale_dt": datetime.fromisoformat(str(i["sale_dt"])).date(),
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": i["supplier_oper_name"],
                     "warehousePrice": 0
