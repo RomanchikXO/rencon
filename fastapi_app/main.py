@@ -288,6 +288,7 @@ class ProductsStatRequest(BaseModel):
 
 
 class ProductStatResponse(BaseModel):
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
     date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
     color: Optional[str] = Field(None, description="Цвет товара")
@@ -370,6 +371,7 @@ async def products_stat_endpoint(
 
         # Фильтруем ProductsStat
         query_stats = (select(
+            nmids_table.c.vendorcode,
             products_table.c.nmid,
             products_table.c.date_wb,
             products_table.c.ordersSumRub,
@@ -409,6 +411,7 @@ class ProductsQuantRequest(BaseModel):
 
 
 class ProductQuantResponse(BaseModel):
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
     quantity: float = Field(..., description="Остатки")
     inwaytoclient: int = Field(..., description="В пути к клиенту")
@@ -437,6 +440,7 @@ async def products_quantity_endpoint(
         lk_id = lk_row["id"]
 
         query_stocks = (select(
+            nmids_table.c.vendorcode,
             stocks_table.c.nmid,
             stocks_table.c.techsize,
             stocks_table.c.inwaytoclient,
@@ -472,6 +476,7 @@ async def products_quantity_endpoint(
                 continue
 
             all_data.append(dict(
+                vendorcode=i["vendorcode"],
                 nmid=i["nmid"],
                 inwaytoclient=i["inwaytoclient"],
                 inwayfromclient=i["inwayfromclient"],
@@ -516,6 +521,7 @@ async def get_supplier_oper_name(
 
 
 class AdvCostResponse(BaseModel):
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
     cost: float = Field(..., description="Затраты")
     color: str = Field(..., description="Цвет")
@@ -547,6 +553,7 @@ async def get_adv_cost(
         # Получаем список nmid по lk
         query_nmids = (
             select(
+                nmids_table.c.vendorcode,
                 advstat_table.c.nmid,
                 advstat_table.c.sum_cost,
                 advstat_table.c.date_wb,
@@ -574,6 +581,7 @@ async def get_adv_cost(
                 continue
 
             result.append(dict(
+                vendorcode=row["vendorcode"],
                 nmid=row["nmid"],
                 cost=row["sum_cost"] or 0,
                 color=color,
@@ -588,6 +596,7 @@ async def get_adv_cost(
 
 
 class AdvConversionResponse(BaseModel):
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     clicks: int
     views: int
     atbs: int
@@ -621,6 +630,7 @@ async def get_adv_conversion(
         # Получаем список nmid по lk
         query_nmids = (
             select(
+                nmids_table.c.vendorcode,
                 advstat_table.c.nmid,
                 advstat_table.c.clicks,
                 advstat_table.c.views,
@@ -652,6 +662,7 @@ async def get_adv_conversion(
                 continue
 
             result.append(dict(
+                vendorcode=row["vendorcode"],
                 nmid=row["nmid"],
                 clicks=row["clicks"] or 0,
                 views=row["views"] or 0,
@@ -666,6 +677,7 @@ async def get_adv_conversion(
 
 
 class ProductSaleResponse(BaseModel):
+    vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     rub: float = Field(..., description="Сумма заказов в рублях")
     sht: int = Field(..., description="Количество заказов")
     nmid: int = Field(..., description="Артикул WB")
@@ -698,6 +710,7 @@ async def get_adv_reg_sales(
 
         # Фильтруем ProductsStat
         query_stats = (select(
+            nmids_table.c.vendorcode,
             sales_reg_table.c.nmid,
             sales_reg_table.c.date_wb,
             sales_reg_table.c.saleInvoiceCostPrice,
@@ -722,11 +735,13 @@ async def get_adv_reg_sales(
             color = i["color"].strip('"').lower() if i.get("color") else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
+            vendorcode = i["vendorcode"]
             nmid = i["nmid"]
             rub = i["saleInvoiceCostPrice"]
             sht = i["saleItemInvoiceQty"]
 
             all_data.append(dict(
+                vendorcode=vendorcode,
                 nmid=nmid,
                 rub=rub,
                 sht=sht,
