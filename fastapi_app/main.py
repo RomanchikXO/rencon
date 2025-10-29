@@ -77,7 +77,7 @@ class FinReportResponse(BaseModel):
     vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
     date_wb: date_dt = Field(..., description="Дата операции")
-    sale_dt: date_dt = Field(..., description="Дата продажи")
+    sale_dt: Optional[date_dt] = Field(None, description="Дата продажи")
     color: Optional[str] = Field(None, description="Цвет товара")
     retail_price: Optional[float] = Field(None, description="Цена розничная")
     retail_amount: Optional[float] = Field(None, description="Сумма реализации")
