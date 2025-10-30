@@ -86,6 +86,7 @@ class FinReportResponse(BaseModel):
     acceptance: Optional[float] = Field(None, description="Платная приемка")
     warehousePrice: Optional[float] = Field(None, description="Сумма хранения")
     supplier_oper_name: Optional[str] = Field(None, description="Основание для оплаты")
+    penalty: Optional[float] = Field(None, description="Штрафы")
 
 class FinReportResponseWithDeduction(BaseModel):
     data: List[FinReportResponse]
@@ -178,6 +179,7 @@ async def fin_report_endpoint(
             findata_table.c.sale_dt,  # дата операции
             findata_table.c.supplier_oper_name,
             findata_table.c.ts_name, # размер
+            findata_table.c.penalty, # штрафы
             color_expr
         )
         .join(nmids_table, nmids_table.c.nmid == findata_table.c.nmid)
@@ -247,7 +249,8 @@ async def fin_report_endpoint(
                     "sale_dt": datetime.fromisoformat(str(i["sale_dt"])).date(),
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": i["supplier_oper_name"],
-                    "warehousePrice": 0
+                    "warehousePrice": 0,
+                    "penalty": i["penalty"]
                 })
 
             # второй массив (цены склада)
