@@ -250,7 +250,7 @@ async def fin_report_endpoint(
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
                     "supplier_oper_name": i["supplier_oper_name"],
                     "warehousePrice": 0,
-                    "penalty": i["penalty"]
+                    "penalty": i["penalty"] if i.get("penalty") else 0
                 })
 
             # второй массив (цены склада)
