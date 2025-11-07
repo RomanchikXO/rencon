@@ -10,6 +10,7 @@ import time
 from database.DataBase import async_connect_to_database
 from database.funcs_db import add_set_data_from_db
 from django.utils.dateparse import parse_datetime
+from google.functions import update_google_sheet_data
 
 logger = ContextLogger(logging.getLogger("parsers"))
 
@@ -312,7 +313,25 @@ async def get_and_save_mysklad_data() -> None:
     finally:
         await conn.close()
 
-# if __name__ == "__main__":
-#     loop = asyncio.get_event_loop()
-#     res = loop.run_until_complete(collect_all_data())
-#     print(json.dumps(res, indent=2, ensure_ascii=False))
+
+async def update_google_table() -> None:
+    try:
+        conn = await async_connect_to_database()
+        if not conn:
+            logger.error("Ошибка подключения к БД")
+            raise
+
+        req_is_rows_in_db = """
+            SELECT 
+            name, articul, TO_CHAR(date_time, 'YYYY-MM-DD HH24:MI:SS') AS date_time,
+            price, quantity, shipped, accepted, color, "size", size_ru
+            FROM myapp_mysklad;
+        """
+        all_fields = await conn.fetch(req_is_rows_in_db,)
+    except Exception as e:
+        logger.error(f"Ошибка получения данных из таблицы Мой склад")
+        return
+    finally:
+        await conn.close()
+
+    logger.info(all_fields)
