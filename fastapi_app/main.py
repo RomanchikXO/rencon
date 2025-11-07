@@ -608,6 +608,7 @@ class AdvConversionResponse(BaseModel):
     clicks: int
     views: int
     atbs: int
+    orders: int
     nmid: int = Field(..., description="Артикул WB")
     date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
     color: Optional[str] = Field(None, description="Цвет товара")
@@ -643,6 +644,7 @@ async def get_adv_conversion(
                 advstat_table.c.clicks,
                 advstat_table.c.views,
                 advstat_table.c.atbs,
+                advstat_table.c.orders,
                 nmids_table.c.characteristics,
                 advstat_table.c.date_wb,
                 advstat_table.c.advert_id,
@@ -675,6 +677,7 @@ async def get_adv_conversion(
                 clicks=row["clicks"] or 0,
                 views=row["views"] or 0,
                 atbs=row["atbs"] or 0,
+                orders=row["orders"] or 0,
                 date_wb=datetime.fromisoformat(str(row["date_wb"])).date(),
                 color=color,
             ))
