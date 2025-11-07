@@ -108,7 +108,7 @@ async def get_data(session, url):
                 return json.loads(response_text)
 
         except aiohttp.ClientResponseError as e:
-            logger.error(f"HTTP ошибка {e.status} при запросе {url}: {e.message}")
+            logger.error(f"HTTP ошибка {e.status} при запросе {url}: {e.message} Заголовки: {credentials}")
             if 500 <= e.status < 600 and attempt < MAX_RETRIES:
                 wait_time = RETRY_BACKOFF ** attempt
                 logger.warning(f"Серверная ошибка {e.status}, повтор через {wait_time} сек")
