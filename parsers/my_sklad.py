@@ -1,4 +1,4 @@
-# from loader import LOGIN_MY_SKLAD, PASS_MY_SKLAD
+from loader import LOGIN_MY_SKLAD, PASS_MY_SKLAD
 import base64
 import asyncio
 import aiohttp
@@ -12,10 +12,6 @@ from database.funcs_db import add_set_data_from_db
 from django.utils.dateparse import parse_datetime
 
 logger = ContextLogger(logging.getLogger("parsers"))
-
-# удалить
-LOGIN_MY_SKLAD = "admin@justbemens"
-PASS_MY_SKLAD = 'fm?i17*5["hJ[UsE'
 
 # Кодируем в Base64
 credentials = f"{LOGIN_MY_SKLAD}:{PASS_MY_SKLAD}"
