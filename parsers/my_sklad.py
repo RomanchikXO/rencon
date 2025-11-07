@@ -341,6 +341,7 @@ async def update_google_table_mysklad() -> None:
         if conn:
             await conn.close()
 
+    try:
         # Преобразуем в список списков
         header = ["Название", "Артикул", "Дата", "Себестоймость", "Количество", "Отправлено", "Принято", "Цвет", "Размер",
                   "Размер РФ"]
@@ -381,3 +382,5 @@ async def update_google_table_mysklad() -> None:
         )
 
         logger.info(f"В Google Sheets успешно выгружено {len(rows)} строк")
+    except Exception as e:
+        logger.error(f"Ошибка обноления гугл таблицы Мой Склад: {e}")
