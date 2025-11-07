@@ -58,7 +58,7 @@ class RateLimiter:
             # Если достигли лимита, ждём
             if len(self.request_times) >= self.max_requests:
                 sleep_time = self.time_window - (now - self.request_times[0]) + 0.1
-                logger.info(f"Достигнут лимит запросов. Ожидание {sleep_time:.2f} сек")
+                # logger.info(f"Достигнут лимит запросов. Ожидание {sleep_time:.2f} сек")
                 await asyncio.sleep(sleep_time)
 
                 # Очищаем старые запросы после ожидания
