@@ -344,6 +344,7 @@ class MySklad(models.Model):
     color = models.CharField(max_length=255, null=True)
     size = models.CharField(max_length=255, null=True)
     size_ru = models.CharField(max_length=255, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name_plural = 'Мой Склад'
