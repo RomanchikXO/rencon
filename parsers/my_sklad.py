@@ -276,8 +276,8 @@ async def get_and_save_mysklad_data() -> None:
                 key_id = key.split("/")[-1]
                 color = value["positions"]["Цвет"]
                 name = value["positions"]["name"]
-                size = value["positions"]["Размер"]
-                size_ru = value["positions"]["Размер РФ"]
+                size = value["positions"].get("Размер", "Отсутствует")
+                size_ru = value["positions"].get("Размер РФ", "Отсутствует")
                 articul = name.split("_")[1].split(" ")[0]
                 data.append(
                     add_set_data_from_db(
