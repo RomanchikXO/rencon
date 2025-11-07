@@ -4,7 +4,7 @@ import asyncio
 from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, get_stock_age_by_period,
                                 get_qustions, get_stat_products, get_advs, get_advs_stat, get_fin_report,
                                 make_and_get_save_report, get_region_sales)
-from parsers.my_sklad import get_and_save_mysklad_data, update_google_table
+from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
 
@@ -16,10 +16,10 @@ logger = ContextLogger(logging.getLogger("myapp"))
 
 
 @shared_task
-@with_task_context("update_google_table")
-def update_google_table_task():
+@with_task_context("update_google_table_mysklad")
+def update_google_table_mysklad_task():
     logger.info("🟢 Обновляем в Мой склад google")
-    asyncio.run(update_google_table())
+    asyncio.run(update_google_table_mysklad())
     logger.info("Мой склад google обновлена")
 
 

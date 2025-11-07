@@ -5,7 +5,7 @@ import aiohttp
 import json
 from context_logger import ContextLogger
 import logging
-from typing import Dict
+from typing import Dict, List
 import time
 from database.DataBase import async_connect_to_database
 from database.funcs_db import add_set_data_from_db
@@ -314,7 +314,8 @@ async def get_and_save_mysklad_data() -> None:
         await conn.close()
 
 
-async def update_google_table() -> None:
+async def update_google_table_mysklad() -> None:
+    conn = None
     try:
         conn = await async_connect_to_database()
         if not conn:
@@ -327,11 +328,56 @@ async def update_google_table() -> None:
             price, quantity, shipped, accepted, color, "size", size_ru
             FROM myapp_mysklad;
         """
-        all_fields = await conn.fetch(req_is_rows_in_db,)
+        rows = await conn.fetch(req_is_rows_in_db)
+
+        if not rows:
+            logger.info("Данные в myapp_mysklad отсутствуют — таблица пуста")
+            return
+
     except Exception as e:
-        logger.error(f"Ошибка получения данных из таблицы Мой склад")
+        logger.error(f"Ошибка получения данных из таблицы Мой склад {e}")
         return
     finally:
-        await conn.close()
+        if conn:
+            await conn.close()
 
-    logger.info(all_fields)
+        # Преобразуем в список списков
+        header = ["Название", "Артикул", "Дата", "Себестоймость", "Количество", "Отправлено", "Принято", "Цвет", "Размер",
+                  "Размер РФ"]
+        data: List[List[str]] = [header]
+
+        for row in rows:
+            data.append([
+                row["name"] or "",
+                row["articul"] or "",
+                row["date_time"] or "",
+                str(row["price"] or ""),
+                str(row["quantity"] or ""),
+                str(row["shipped"] or ""),
+                str(row["accepted"] or ""),
+                row["color"] or "",
+                row["size"] or "",
+                row["size_ru"] or "",
+            ])
+
+        # вычисляем безопасный диапазон очистки — чуть больше, чем количество строк
+        clear_rows = max(1000, len(data) + 300)
+        clear_data = [["" for _ in range(10)] for _ in range(clear_rows)]
+
+        # очищаем диапазон (одним вызовом)
+        update_google_sheet_data(
+            spreadsheet_url="https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0",
+            sheet_identifier=0,
+            data_range=f"A1:J{clear_rows}",
+            values=clear_data
+        )
+
+        # выгружаем актуальные данные
+        update_google_sheet_data(
+            spreadsheet_url="https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0",
+            sheet_identifier=0,
+            data_range=f"A1:J{len(data)}",
+            values=data
+        )
+
+        logger.info(f"В Google Sheets успешно выгружено {len(rows)} строк")
