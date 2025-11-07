@@ -330,3 +330,19 @@ class RegionSales(models.Model):
     class Meta:
         unique_together = ['date_wb', 'nmid', 'sa', 'cityName', 'regionName']
         verbose_name_plural = 'ПРОДАЖИ по регионам'
+
+
+class MySklad(models.Model):
+    name = models.CharField(max_length=255, null=True)
+    articul = models.CharField(max_length=255, null=True)
+    date_time = models.DateTimeField()
+    price = models.FloatField()
+    quantity = models.FloatField()
+    shipped = models.FloatField()
+    accepted = models.FloatField()
+    color = models.CharField(max_length=255, null=True)
+    size = models.CharField(max_length=255, null=True)
+    size_ru = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        verbose_name_plural = 'Мой Склад'

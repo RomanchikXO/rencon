@@ -20,3 +20,6 @@ BOT_TOKEN=os.getenv("BOT_TOKEN")
 
 DEBUG = os.getenv("DEBUG", "0") == "1"
 ALLOWED_HOSTS=os.getenv("ALLOWED_HOSTS")
+
+LOGIN_MY_SKLAD = os.getenv("LOGIN_MY_SKLAD")
+PASS_MY_SKLAD = os.getenv("PASS_MY_SKLAD")
