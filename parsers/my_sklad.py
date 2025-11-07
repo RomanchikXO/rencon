@@ -271,32 +271,35 @@ async def get_and_save_mysklad_data() -> None:
             raise
 
         data = []
-        for key, value in all_data.items():
-            key_id = key.split("/")[-1]
-            color = value["positions"]["Цвет"]
-            name = value["positions"]["name"]
-            size = value["positions"]["Размер"]
-            size_ru = value["positions"]["Размер РФ"]
-            articul = name.split("_")[1].split(" ")[0]
-            data.append(
-                add_set_data_from_db(
-                    conn=conn,
-                    table_name="myapp_mysklad",
-                    data=dict(
-                        key_id=key_id,
-                        name=name,
-                        articul=articul,
-                        date_time=parse_datetime(value["date_time"]),
-                        price=value["price"],
-                        quantity=value["quantity"],
-                        shipped=value["shipped"],
-                        accepted=value["accepted"],
-                        color=color,
-                        size=size,
-                        size_ru=size_ru
+        try:
+            for key, value in all_data.items():
+                key_id = key.split("/")[-1]
+                color = value["positions"]["Цвет"]
+                name = value["positions"]["name"]
+                size = value["positions"]["Размер"]
+                size_ru = value["positions"]["Размер РФ"]
+                articul = name.split("_")[1].split(" ")[0]
+                data.append(
+                    add_set_data_from_db(
+                        conn=conn,
+                        table_name="myapp_mysklad",
+                        data=dict(
+                            key_id=key_id,
+                            name=name,
+                            articul=articul,
+                            date_time=parse_datetime(value["date_time"]),
+                            price=value["price"],
+                            quantity=value["quantity"],
+                            shipped=value["shipped"],
+                            accepted=value["accepted"],
+                            color=color,
+                            size=size,
+                            size_ru=size_ru
+                        )
                     )
                 )
-            )
+        except Exception as e:
+            logger.error(f"Ошибка подготовки данных перед загрузкой в БД {e}")
 
         try:
             results = await asyncio.gather(*data)
