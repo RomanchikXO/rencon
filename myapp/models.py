@@ -333,6 +333,7 @@ class RegionSales(models.Model):
 
 
 class MySklad(models.Model):
+    key_id = models.CharField(primary_key=True)
     name = models.CharField(max_length=255, null=True)
     articul = models.CharField(max_length=255, null=True)
     date_time = models.DateTimeField()
