@@ -28,7 +28,7 @@ RETRY_BACKOFF = 2
 
 # Ограничения API МойСклад
 MAX_REQUESTS_PER_3_SEC = 45  # максимум 45 запросов за 3 секунды
-MAX_PARALLEL_REQUESTS = 20  # максимум 20 параллельных запросов
+MAX_PARALLEL_REQUESTS = 5  # максимум 20 параллельных запросов
 TIME_WINDOW = 3.0  # временное окно в секундах
 
 
@@ -108,7 +108,7 @@ async def get_data(session, url):
                 return json.loads(response_text)
 
         except aiohttp.ClientResponseError as e:
-            logger.error(f"HTTP ошибка {e.status} при запросе {url}: {e.message} Заголовки: {credentials}")
+            logger.error(f"HTTP ошибка {e.status} при запросе {url}: {e.message}")
             if 500 <= e.status < 600 and attempt < MAX_RETRIES:
                 wait_time = RETRY_BACKOFF ** attempt
                 logger.warning(f"Серверная ошибка {e.status}, повтор через {wait_time} сек")
