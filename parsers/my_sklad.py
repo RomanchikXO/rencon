@@ -295,7 +295,8 @@ async def get_and_save_mysklad_data() -> None:
                             color=color,
                             size=size,
                             size_ru=size_ru
-                        )
+                        ),
+                            conflict_fields=["key_id"]
                     )
                 )
         except Exception as e:
