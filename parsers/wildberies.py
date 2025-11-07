@@ -1398,14 +1398,15 @@ async def get_advs_stat():
 
                             if time_since_last_call < MIN_INTERVAL:
                                 wait_time = MIN_INTERVAL - time_since_last_call
-                                logger.info(f"Rate limiting для {cab['name']}: ждём {wait_time:.1f} сек")
+                                # logger.info(f"Rate limiting для {cab['name']}: ждём {wait_time:.1f} сек")
                                 await asyncio.sleep(wait_time)
 
                             if attempt > 1:
                                 logger.info(
                                     f"Повтор {attempt}/{MAX_RETRIES} для {cab['name']}, батч {batch_num}/{total_batches}")
                             else:
-                                logger.info(f"Запрос fullstats для {cab['name']}, батч {batch_num}/{total_batches}")
+                                # logger.info(f"Запрос fullstats для {cab['name']}, батч {batch_num}/{total_batches}")
+                                pass
 
                             response = await wb_api(session, param)
                             token_last_call[token] = time.time()
@@ -1418,10 +1419,10 @@ async def get_advs_stat():
                         if attempt < MAX_RETRIES:
                             # Экспоненциальная задержка перед retry
                             retry_delay = 10 * attempt
-                            logger.warning(
-                                f"Пустой ответ для {cab['name']}, батч {batch_num}. "
-                                f"Ждём {retry_delay} сек перед повтором"
-                            )
+                            # logger.warning(
+                            #     f"Пустой ответ для {cab['name']}, батч {batch_num}. "
+                            #     f"Ждём {retry_delay} сек перед повтором"
+                            # )
                             await asyncio.sleep(retry_delay)
 
                     # Обработка ответа
@@ -1485,7 +1486,7 @@ async def get_advs_stat():
                                     "views" = EXCLUDED."views";
                             """
                             await conn.executemany(query, data_for_upload)
-                            logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}, батч {batch_num}")
+                            # logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}, батч {batch_num}")
                         except Exception as e:
                             logger.error(f"Ошибка обновления данных для {cab['name']}, батч {batch_num}: {e}")
                             raise
