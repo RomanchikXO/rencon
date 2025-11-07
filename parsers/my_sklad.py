@@ -169,6 +169,7 @@ async def get_info_order(session, id: str, date_time: str) -> Dict[str, dict]:
     data = await get_data(session, url)
 
     if not data:
+        logger.error("Отсутствуют данные в get_info_order")
         return response_data
 
     rows = data.get("rows", [])
