@@ -541,7 +541,21 @@ async def get_dimensions(
             nmids_table.c.dimensions
         )
         rows = await database.fetch_all(query_data)
-        return rows
+
+        response = {
+            row["vendorcode"] : {
+                "img_url": 'пока пусто',
+                "nmid": row["nmid"],
+                "subjectname": row["subjectname"],
+                "dimensions" : {
+                    "height": row["dimensions"]["height"],
+                    "lenght": row["dimensions"]["lenght"],
+                    "width": row["dimensions"]["width"],
+                }
+            }
+            for row in rows
+        }
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
