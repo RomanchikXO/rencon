@@ -528,6 +528,23 @@ async def get_supplier_oper_name(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/dimensions/", summary="Получить данные о товарах")
+async def get_dimensions(
+        token: str = Depends(verify_token)
+):
+    try:
+        query_data = select(
+            nmids_table.c.vendorcode,
+            nmids_table.c.nmid,
+            nmids_table.c.subjectname,
+            nmids_table.c.title,
+            nmids_table.c.dimensions
+        )
+        return query_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class AdvCostResponse(BaseModel):
     vendorcode: Optional[str] = Field(None, description="Артикул продавца")
     nmid: int = Field(..., description="Артикул WB")
