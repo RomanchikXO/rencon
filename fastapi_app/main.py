@@ -540,7 +540,8 @@ async def get_dimensions(
             nmids_table.c.title,
             nmids_table.c.dimensions
         )
-        return query_data
+        rows = await database.fetch_all(query_data)
+        return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
