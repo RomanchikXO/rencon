@@ -556,7 +556,7 @@ async def get_dimensions(
 
         response = {
             row["vendorcode"] : {
-                "img_url": 'пока пусто',
+                "img_url": row["img_url"],
                 "nmid": row["nmid"],
                 "subjectname": row["subjectname"],
                 "dimensions" : {
