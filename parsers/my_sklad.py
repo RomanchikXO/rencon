@@ -11,6 +11,7 @@ from database.DataBase import async_connect_to_database
 from database.funcs_db import add_set_data_from_db
 from django.utils.dateparse import parse_datetime
 from google.functions import update_google_sheet_data
+from datetime import timedelta
 
 logger = ContextLogger(logging.getLogger("parsers"))
 
@@ -289,7 +290,7 @@ async def get_and_save_mysklad_data() -> None:
                             key_id=key_id,
                             name=name,
                             articul=articul,
-                            date_time=parse_datetime(value["date_time"]),
+                            date_time=parse_datetime(value["date_time"])  + timedelta(hours=3),
                             price=value["price"],
                             quantity=value["quantity"],
                             shipped=value["shipped"],
