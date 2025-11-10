@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Dict, Union, Optional, List
 
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String
+from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String, text
 from .database import database
 from pydantic import BaseModel, Field, RootModel
 from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
@@ -538,7 +538,19 @@ async def get_dimensions(
             nmids_table.c.nmid,
             nmids_table.c.subjectname,
             nmids_table.c.title,
-            nmids_table.c.dimensions
+            nmids_table.c.dimensions,
+            # достаём первый элемент photos, где big оканчивается на /1.webp
+            func.coalesce(
+                text("""
+                    (
+                        SELECT p->>'big'
+                        FROM jsonb_array_elements(photos) AS p
+                        WHERE p->>'big' LIKE '%/1.webp'
+                        LIMIT 1
+                    )
+                    """),
+                text("'пока пусто'")
+            ).label("img_url")
         )
         rows = await database.fetch_all(query_data)
 
