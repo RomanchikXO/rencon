@@ -92,6 +92,7 @@ class nmids(models.Model):
     title = models.CharField(max_length=500) # Наименование товара
     description = models.TextField(null=True, blank=True) # Описание товара
     needkiz = models.BooleanField() # Требуется ли код маркировки для этого товара
+    photos = models.JSONField(null=True, blank=True) # фотки без видео
     dimensions = models.JSONField() # Габариты и вес товара c упаковкой, см и кг
     characteristics = models.JSONField() # Характеристики
     sizes = models.JSONField() # Размеры товара
