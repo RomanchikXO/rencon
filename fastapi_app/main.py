@@ -549,7 +549,7 @@ async def get_dimensions(
                 "subjectname": row["subjectname"],
                 "dimensions" : {
                     "height": row["dimensions"]["height"],
-                    "lenght": row["dimensions"]["lenght"],
+                    "lenght": row["dimensions"]["length"],
                     "width": row["dimensions"]["width"],
                 }
             }
