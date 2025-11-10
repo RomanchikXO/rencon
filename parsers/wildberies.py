@@ -667,7 +667,7 @@ async def get_nmids():
                                 title=resp["title"],
                                 description=resp.get("description", ""),
                                 needkiz=resp["needKiz"],
-                                photos=json.dumps(resp["photos"]),
+                                photos=json.dumps(resp.get("photos", [])),
                                 dimensions=json.dumps(resp["dimensions"]),
                                 characteristics=json.dumps(resp["characteristics"]),
                                 sizes=json.dumps(resp["sizes"]),
