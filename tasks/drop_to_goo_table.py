@@ -18,7 +18,15 @@ async def do_something():
 
     try:
         reform_data = [
-            [value["inn"], key, value["img_url"], value["nmid"], value["subjectname"], value["dimension"]["height"], value["dimension"]["length"], value["dimension"]["width"], ""]
+            [value["inn"],
+             key,
+             value["img_url"],
+             value["nmid"],
+             value["subjectname"],
+             value["dimension"]["height"],
+             value["dimensions"]["length"],
+             value["dimensions"]["width"],
+             ""]
             for key, value in result.items()
         ]
     except Exception as e:
