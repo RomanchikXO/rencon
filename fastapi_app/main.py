@@ -533,29 +533,36 @@ async def get_dimensions(
         token: str = Depends(verify_token)
 ):
     try:
-        query_data = select(
-            nmids_table.c.vendorcode,
-            nmids_table.c.nmid,
-            nmids_table.c.subjectname,
-            nmids_table.c.title,
-            nmids_table.c.dimensions,
-            # достаём первый элемент photos, где big оканчивается на /1.webp
-            func.coalesce(
-                text("""
-                    (
-                        SELECT p->>'big'
-                        FROM jsonb_array_elements(photos) AS p
-                        WHERE p->>'big' LIKE '%/1.webp'
-                        LIMIT 1
-                    )
-                    """),
-                text("'пока пусто'")
-            ).label("img_url")
+        query_data = (
+            select(
+                nmids_table.c.vendorcode,
+                nmids_table.c.nmid,
+                nmids_table.c.subjectname,
+                nmids_table.c.title,
+                nmids_table.c.dimensions,
+                wblk_table.c.inn,
+                # достаём первый элемент photos, где big оканчивается на /1.webp
+                func.coalesce(
+                    text("""
+                        (
+                            SELECT p->>'big'
+                            FROM jsonb_array_elements(photos) AS p
+                            WHERE p->>'big' LIKE '%/1.webp'
+                            LIMIT 1
+                        )
+                        """),
+                    text("'пока пусто'")
+                ).label("img_url")
+            )
+            .select_from(
+                nmids_table.join(wblk_table, nmids_table.c.lk_id == wblk_table.c.id)
+            )
         )
         rows = await database.fetch_all(query_data)
 
         response = {
             row["vendorcode"] : {
+                "inn": row["inn"],
                 "img_url": row["img_url"],
                 "nmid": row["nmid"],
                 "subjectname": row["subjectname"],

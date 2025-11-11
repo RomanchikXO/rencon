@@ -55,7 +55,7 @@ def get_ids_pages_table(url) -> List:
 
     return response
 
-def update_google_sheet_data(spreadsheet_url: str, sheet_identifier: int, data_range: str, values: List[list]):
+def update_google_sheet_data(spreadsheet_url: str, sheet_identifier: Union[int, str], data_range: str, values: List[list]):
     """
     Функция для обновления данных в Google Таблице.
 
