@@ -23,7 +23,7 @@ async def do_something():
              value["img_url"],
              value["nmid"],
              value["subjectname"],
-             value["dimension"]["height"],
+             value["dimensions"]["height"],
              value["dimensions"]["length"],
              value["dimensions"]["width"],
              ""]
