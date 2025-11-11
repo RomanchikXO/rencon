@@ -41,7 +41,7 @@ async def upload_dimensions_to_google():
                 value["dimensions"]["height"],
                 value["dimensions"]["lenght"],
                 value["dimensions"]["width"],
-                sloi.get(value["subjectname"], "Слой не обнаружен")
+                sloi.get(key, "Слой не обнаружен")
             ]
             for key, value in result.items()
         ]
