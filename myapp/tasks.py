@@ -107,6 +107,7 @@ def get_prices_and_products():
 @shared_task
 @with_task_context("some_task")
 def some_task():
+    logger.info("Старт тестового таска")
     asyncio.run(do_something())
 
 
