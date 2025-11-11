@@ -1,7 +1,8 @@
 import asyncio
 
 from fastapi_app.main import (wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost,
-                              get_adv_reg_sales, ProductsQuantRequest, products_quantity_endpoint)
+                              get_adv_reg_sales, ProductsQuantRequest, products_quantity_endpoint,
+                              products_stat_endpoint)
 from sqlalchemy import select
 from loader import BEARER
 from context_logger import ContextLogger
@@ -351,7 +352,7 @@ async def upload_ostatki_to_google():
                 inn,
                 stat["vendorcode"],
                 stat["nmid"],
-                stat["nmid"],
+                stat["quantity"],
                 stat["inwaytoclient"],
                 stat["inwayfromclient"],
                 stat["warehouse"],
@@ -387,3 +388,79 @@ async def upload_ostatki_to_google():
         )
     except Exception as e:
         logger.error(f"Ошибка загрузки ostatki в таблицу: {e}")
+
+
+@with_db_connection
+async def upload_products_stat_to_google():
+    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1628086389#gid=1628086389"
+    name = "ProductsStat"
+
+    sloi = await get_sloy()
+
+    date_from_str = await get_first_day_last_month()
+
+    query_inns = select(
+        wblk_table.c.inn
+    )
+    rows = await database.fetch_all(query_inns)
+    inns = [int(row["inn"]) for row in rows]
+
+    payloads = [
+        ProductsStatRequest(inn=inn, date_from=date_from_str)
+        for inn in inns
+    ]
+
+    # Запускаем все запросы параллельно
+    results_list = await asyncio.gather(
+        *[products_stat_endpoint(payload=payload, token=BEARER) for payload in payloads]
+    )
+
+    # Создаем словарь: ключ — inn, значение — результат
+    results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
+
+    headers = [
+        "inn", "vendorcode", "nmid", "date_wb", "color", "ordersSumRub", "ordersCount", "Слой"
+    ]
+    data = [headers]
+
+    try:
+        reform_data = [
+            [
+                inn,
+                stat["vendorcode"],
+                stat["nmid"],
+                stat["nmid"],
+                stat["date_wb"].strftime("%Y-%m-%d"),
+                stat["color"],
+                stat["ordersSumRub"],
+                stat["ordersCount"],
+                sloi.get(stat["vendorcode"], "Слой не обнаружен")
+            ]
+            for inn, stats_list in results_by_inn.items()
+            for stat in stats_list
+        ]
+    except Exception as e:
+        logger.error(f"Ошибка обработки данных в upload_products_stat_to_google: {e}")
+        raise
+
+    data += reform_data
+
+    try:
+        clear_rows = max(1000, len(data) + 300)
+        clear_data = [["" for _ in range(8)] for _ in range(clear_rows)]
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:H{clear_rows}",
+            values=clear_data
+        )
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:H{len(data)}",
+            values=data
+        )
+    except Exception as e:
+        logger.error(f"Ошибка загрузки products_stat в таблицу: {e}")
