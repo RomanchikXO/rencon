@@ -1,17 +1,13 @@
-from fastapi.testclient import TestClient
-from fastapi_app.main import app
+from fastapi_app.main import get_dimensions
 from loader import BEARER
 from context_logger import ContextLogger
 import logging
 
-client = TestClient(app)
-
 logger = ContextLogger(logging.getLogger("core"))
 
-def do_something():
+async def do_something():
     try:
-        response = client.get("/dimensions/", headers={"Authorization": f"Bearer {BEARER}"})
-        logger.info(response.json())  # выведем JSON-ответ
+        result = await get_dimensions(token=BEARER)
+        logger.info(result)
     except Exception as e:
-        logger.error(e)
-        raise
+        logger.error(f"Ошибка при выполнении get_dimensions: {e}")
