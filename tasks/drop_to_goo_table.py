@@ -124,7 +124,7 @@ async def upload_advconconversion_to_google():
                 stat["atbs"],
                 stat["orders"],
                 stat["nmid"],
-                stat["date_wb"],
+                stat["date_wb"].strftime("%Y-%m-%d"),
                 stat["color"],
                 sloi.get(stat["vendorcode"], "Слой не обнаружен")
             ]
