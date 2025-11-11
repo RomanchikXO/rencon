@@ -24,7 +24,7 @@ async def do_something():
              value["nmid"],
              value["subjectname"],
              value["dimensions"]["height"],
-             value["dimensions"]["length"],
+             value["dimensions"]["lenght"],
              value["dimensions"]["width"],
              ""]
             for key, value in result.items()
