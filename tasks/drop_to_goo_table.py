@@ -221,7 +221,7 @@ async def upload_advcost_to_google():
 
     try:
         clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(8)] for _ in range(clear_rows)]
+        clear_data = [["" for _ in range(7)] for _ in range(clear_rows)]
 
         update_google_sheet_data(
             spreadsheet_url=url,
