@@ -7,7 +7,8 @@ from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, 
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
-from tasks.drop_to_goo_table import upload_dimensions_to_google, upload_advconversion_to_google, upload_advcost_to_google
+from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
+                                     upload_advcost_to_google, upload_salesreport_to_google)
 
 import logging
 from decorators import with_task_context
@@ -119,6 +120,13 @@ def upload_advcost_to_google_task():
     asyncio.run(upload_advcost_to_google())
     logger.info("Advcost в гугл табл ЗАГРУЖЕНО")
 
+
+@shared_task
+@with_task_context("upload_salesreport_to_google_task")
+def upload_salesreport_to_google_task():
+    logger.info("🟢 Загрузка salesreport в гугл табл")
+    asyncio.run(upload_salesreport_to_google())
+    logger.info("Salesreport в гугл табл ЗАГРУЖЕНО")
 
 @shared_task
 @with_task_context("upload_advconversion_to_google_task")

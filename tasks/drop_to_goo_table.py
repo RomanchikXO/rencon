@@ -1,6 +1,7 @@
 import asyncio
 
-from fastapi_app.main import wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost
+from fastapi_app.main import (wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost,
+                              get_adv_reg_sales)
 from sqlalchemy import select
 from loader import BEARER
 from context_logger import ContextLogger
@@ -238,3 +239,77 @@ async def upload_advcost_to_google():
         )
     except Exception as e:
         logger.error(f"Ошибка загрузки advcost в таблицу: {e}")
+
+
+@with_db_connection
+async def upload_salesreport_to_google():
+    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=240040532#gid=240040532"
+    name = "SalesReport"
+
+    sloi = await get_sloy()
+
+    date_from_str = await get_first_day_last_month()
+
+    query_inns = select(
+        wblk_table.c.inn
+    )
+    rows = await database.fetch_all(query_inns)
+    inns = [int(row["inn"]) for row in rows]
+
+    payloads = [
+        ProductsStatRequest(inn=inn, date_from=date_from_str)
+        for inn in inns
+    ]
+
+    # Запускаем все запросы параллельно
+    results_list = await asyncio.gather(
+        *[get_adv_reg_sales(payload=payload, token=BEARER) for payload in payloads]
+    )
+
+    # Создаем словарь: ключ — inn, значение — результат
+    results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
+
+
+    headers = ["inn", "vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
+    data = [headers]
+
+    try:
+        reform_data = [
+            [
+                inn,
+                stat["vendorcode"],
+                stat["rub"],
+                stat["sht"],
+                stat["nmid"],
+                stat["color"],
+                stat["date_wb"].strftime("%Y-%m-%d"),
+                sloi.get(stat["vendorcode"], "Слой не обнаружен")
+            ]
+            for inn, stats_list in results_by_inn.items()
+            for stat in stats_list
+        ]
+    except Exception as e:
+        logger.error(f"Ошибка обработки данных в upload_salesreport_to_google: {e}")
+        raise
+
+    data += reform_data
+
+    try:
+        clear_rows = max(1000, len(data) + 300)
+        clear_data = [["" for _ in range(8)] for _ in range(clear_rows)]
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:H{clear_rows}",
+            values=clear_data
+        )
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:H{len(data)}",
+            values=data
+        )
+    except Exception as e:
+        logger.error(f"Ошибка загрузки salesreport в таблицу: {e}")
