@@ -10,7 +10,7 @@ logger = ContextLogger(logging.getLogger("core"))
 
 async def do_something():
     try:
-        response = client.get("/dimensions/", headers={"Authorization": BEARER})
+        response = client.get("/dimensions/", headers={"Authorization": f"Bearer {BEARER}"})
     except Exception as e:
         logger.error(e)
         raise
