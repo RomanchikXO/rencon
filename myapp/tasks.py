@@ -7,7 +7,7 @@ from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, 
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
-from tasks.drop_to_goo_table import do_something
+from tasks.drop_to_goo_table import upload_dimensions_to_google
 
 import logging
 from decorators import with_task_context
@@ -105,10 +105,11 @@ def get_prices_and_products():
 
 
 @shared_task
-@with_task_context("some_task")
+@with_task_context("upload_dimensions_to_google_task")
 def some_task():
-    logger.info("Старт тестового таска")
-    asyncio.run(do_something())
+    logger.info("🟢 Загрузка dimensions в гугл табл")
+    asyncio.run(upload_dimensions_to_google())
+    logger.info("Dimensions в гугл табл ЗАГРУЖЕНО")
 
 
 @shared_task
