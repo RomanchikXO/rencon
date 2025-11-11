@@ -106,7 +106,7 @@ def get_prices_and_products():
 
 @shared_task
 @with_task_context("upload_dimensions_to_google_task")
-def some_task():
+def upload_dimensions_to_google_task():
     logger.info("🟢 Загрузка dimensions в гугл табл")
     asyncio.run(upload_dimensions_to_google())
     logger.info("Dimensions в гугл табл ЗАГРУЖЕНО")
