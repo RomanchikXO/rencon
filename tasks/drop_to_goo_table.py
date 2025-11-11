@@ -8,6 +8,7 @@ import logging
 from decorators import with_db_connection
 from google.functions import update_google_sheet_data, fetch_google_sheet_data
 from datetime import date
+from fastapi_app.main import database
 
 
 logger = ContextLogger(logging.getLogger("core"))
