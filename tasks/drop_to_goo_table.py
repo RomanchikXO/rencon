@@ -429,7 +429,6 @@ async def upload_products_stat_to_google():
                 inn,
                 stat["vendorcode"],
                 stat["nmid"],
-                stat["nmid"],
                 stat["date_wb"].strftime("%Y-%m-%d"),
                 stat["color"],
                 stat["ordersSumRub"],
