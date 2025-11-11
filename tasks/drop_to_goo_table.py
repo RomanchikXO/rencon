@@ -7,5 +7,9 @@ import logging
 logger = ContextLogger(logging.getLogger("core"))
 
 async def do_something():
-    result = await get_dimensions(token=BEARER)
+    try:
+        result = await get_dimensions(token=BEARER)
+    except Exception as e:
+        logger.error(e)
+        raise
     logger.info(result)
