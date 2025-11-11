@@ -92,7 +92,7 @@ async def get_first_day_last_month() -> str:
 
 
 @with_db_connection
-async def upload_advconconversion_to_google():
+async def upload_advconversion_to_google():
     url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
     name = "AdvConversion"
 
@@ -141,7 +141,7 @@ async def upload_advconconversion_to_google():
             for stat in stats_list
         ]
     except Exception as e:
-        logger.error(f"Ошибка обработки данных в upload_advconconversion_to_google: {e}")
+        logger.error(f"Ошибка обработки данных в upload_advconversion_to_google: {e}")
         raise
 
     data += reform_data
@@ -164,7 +164,7 @@ async def upload_advconconversion_to_google():
             values=data
         )
     except Exception as e:
-        logger.error(f"Ошибка загрузки advconconversion в таблицу: {e}")
+        logger.error(f"Ошибка загрузки advconversion в таблицу: {e}")
 
 
 @with_db_connection
