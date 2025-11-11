@@ -228,16 +228,24 @@ async def collect_all_data() -> Dict:
     # Используем одну сессию для всех запросов
     async with aiohttp.ClientSession() as session:
         # 1️⃣ Получаем информацию по заказам
-        tasks_orders = [
-            get_info_order(session, idd, date_time)
-            for idd, date_time in id_and_date.items()
-        ]
+        try:
+            tasks_orders = [
+                get_info_order(session, idd, date_time)
+                for idd, date_time in id_and_date.items()
+            ]
+            results_orders = await asyncio.gather(*tasks_orders)
+            logger.info("Получена информация по всем заказам")
+        except Exception as e:
+            logger.error(f"Ошибка при запуске get_info_order: {e}")
+            raise
 
-        results_orders = await asyncio.gather(*tasks_orders)
-        logger.info("Получена информация по всем заказам")
 
         # Преобразуем результаты
-        id_to_result = {url: values for res in results_orders for url, values in res.items()}
+        try:
+            id_to_result = {url: values for res in results_orders for url, values in res.items()}
+        except Exception as e:
+            logger.error(f"Ошибка при обработке results_orders: {e}")
+            raise
         logger.info(f"Всего позиций для обработки: {len(id_to_result)}")
 
         # 2️⃣ Получаем информацию по позициям
