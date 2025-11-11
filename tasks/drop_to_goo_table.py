@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi_app.main import wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest
+from fastapi_app.main import wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost
 from sqlalchemy import select
 from loader import BEARER
 from context_logger import ContextLogger
@@ -81,6 +81,16 @@ async def upload_dimensions_to_google():
         logger.error(f"Ошибка загрузки dimensions в таблицу: {e}")
 
 
+async def get_first_day_last_month() -> str:
+    """
+    получить первое число прошлого месяца
+    :return:
+    """
+    today = date.today()
+    date_from_str = date(today.year - (today.month == 1), (today.month - 1) or 12, 1).strftime("%Y-%m-%d")
+    return date_from_str
+
+
 @with_db_connection
 async def upload_advconconversion_to_google():
     url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
@@ -88,8 +98,7 @@ async def upload_advconconversion_to_google():
 
     sloi = await get_sloy()
 
-    today = date.today()
-    date_from_str = date(today.year - (today.month == 1), (today.month - 1) or 12, 1).strftime("%Y-%m-%d")
+    date_from_str = await get_first_day_last_month()
 
     query_inns = select(
         wblk_table.c.inn
@@ -156,3 +165,76 @@ async def upload_advconconversion_to_google():
         )
     except Exception as e:
         logger.error(f"Ошибка загрузки advconconversion в таблицу: {e}")
+
+
+@with_db_connection
+async def upload_advcost_to_google():
+    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1726292074#gid=1726292074"
+    name = "AdvCost"
+
+    sloi = await get_sloy()
+
+    date_from_str = await get_first_day_last_month()
+
+    query_inns = select(
+        wblk_table.c.inn
+    )
+    rows = await database.fetch_all(query_inns)
+    inns = [int(row["inn"]) for row in rows]
+
+    payloads = [
+        ProductsStatRequest(inn=inn, date_from=date_from_str)
+        for inn in inns
+    ]
+
+    # Запускаем все запросы параллельно
+    results_list = await asyncio.gather(
+        *[get_adv_cost(payload=payload, token=BEARER) for payload in payloads]
+    )
+
+    # Создаем словарь: ключ — inn, значение — результат
+    results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
+
+
+    headers = ["inn", "артикул продавца", "nmid", "cost", "color", "date_wb", "слой"]
+    data = [headers]
+
+    try:
+        reform_data = [
+            [
+                inn,
+                stat["vendorcode"],
+                stat["nmid"],
+                stat["cost"],
+                stat["color"],
+                stat["date_wb"].strftime("%Y-%m-%d"),
+                sloi.get(stat["vendorcode"], "Слой не обнаружен")
+            ]
+            for inn, stats_list in results_by_inn.items()
+            for stat in stats_list
+        ]
+    except Exception as e:
+        logger.error(f"Ошибка обработки данных в upload_advcost_to_google: {e}")
+        raise
+
+    data += reform_data
+
+    try:
+        clear_rows = max(1000, len(data) + 300)
+        clear_data = [["" for _ in range(9)] for _ in range(clear_rows)]
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:G{clear_rows}",
+            values=clear_data
+        )
+
+        update_google_sheet_data(
+            spreadsheet_url=url,
+            sheet_identifier=name,
+            data_range=f"A1:G{len(data)}",
+            values=data
+        )
+    except Exception as e:
+        logger.error(f"Ошибка загрузки advcost в таблицу: {e}")
