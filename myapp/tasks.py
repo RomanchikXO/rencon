@@ -8,7 +8,7 @@ from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysk
 from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
-                                     upload_advcost_to_google, upload_salesreport_to_google)
+                                     upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google)
 
 import logging
 from decorators import with_task_context
@@ -127,6 +127,14 @@ def upload_salesreport_to_google_task():
     logger.info("🟢 Загрузка salesreport в гугл табл")
     asyncio.run(upload_salesreport_to_google())
     logger.info("Salesreport в гугл табл ЗАГРУЖЕНО")
+
+
+@shared_task
+@with_task_context("upload_ostatki_to_google_task")
+def upload_ostatki_to_google_task():
+    logger.info("🟢 Загрузка ostatki в гугл табл")
+    asyncio.run(upload_ostatki_to_google())
+    logger.info("Ostatki в гугл табл ЗАГРУЖЕНО")
 
 @shared_task
 @with_task_context("upload_advconversion_to_google_task")
