@@ -504,7 +504,7 @@ async def upload_fin_report_to_google():
                 stat["ppvz_for_pay"],
                 stat["delivery_rub"],
                 stat["acceptance"],
-                stat["penalty"],
+                stat.get("penalty", 0),
                 stat["date_wb"],
                 stat["sale_dt"] if stat.get("sale_dt") else "",
                 stat["color"],
