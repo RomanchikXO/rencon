@@ -141,5 +141,18 @@ services:
       - redis
     command: ["celery", "-A", "django_app.celery_config", "beat", "--loglevel=info", "--pidfile=", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
 
+  flower:
+    image: mher/flower
+    container_name: celery_flower
+    ports:
+      - "5555:5555"
+    command: >
+      flower
+      --broker=redis://redis:6379/0
+      --port=5555
+    depends_on:
+      - redis
+      - worker
+
 volumes:
   pgdata:
