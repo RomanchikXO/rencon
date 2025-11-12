@@ -488,7 +488,7 @@ async def upload_fin_report_to_google():
     results_by_inn = {inn: result["data"] for inn, result in zip(inns, results_list)}
 
     headers = [
-        "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "date_wb",
+        "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "penalty", "date_wb",
         "sale_dt", "color", "supplier_oper_name", "warehousePrice", "subjectname", "vendorcode", "Слой",
         "Стоимость закупа", "Комиссия"
     ]
@@ -504,6 +504,7 @@ async def upload_fin_report_to_google():
                 stat["ppvz_for_pay"],
                 stat["delivery_rub"],
                 stat["acceptance"],
+                stat["penalty"],
                 stat["date_wb"],
                 stat["sale_dt"] if stat.get("sale_dt") else "",
                 stat["color"],
@@ -527,6 +528,9 @@ async def upload_fin_report_to_google():
     try:
         clear_rows = max(1000, len(data) + 300)
         clear_data = [["" for _ in range(18)] for _ in range(clear_rows)]
+
+        logger.info(f"Данные подготовлены: кол-во строк {len(data)}, кол-во клеток: {len(data) * 18}")
+        raise
 
         update_google_sheet_data(url, name, f"A1:R{clear_rows}", clear_data)
         update_google_sheet_data(url, name, f"A1:R{len(data)}", data, as_user_input=True)
