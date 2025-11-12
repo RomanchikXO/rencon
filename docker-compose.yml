@@ -154,6 +154,7 @@ services:
       --port=5555
     depends_on:
       - redis
+      - worker
 
 volumes:
   pgdata:

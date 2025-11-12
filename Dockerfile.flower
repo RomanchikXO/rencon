@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+# Устанавливаем Flower
+RUN pip install flower
+
+# Рабочая директория
+WORKDIR /app
+
+# По умолчанию запускаем shell, чтобы docker-compose command мог работать
+CMD ["flower"]
