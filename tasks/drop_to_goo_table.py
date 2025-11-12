@@ -505,7 +505,7 @@ async def upload_fin_report_to_google():
                 stat["delivery_rub"],
                 stat["acceptance"],
                 stat["date_wb"],
-                stat["sale_dt"],
+                stat.get("sale_dt"),
                 stat["color"],
                 stat["supplier_oper_name"],
                 stat["warehousePrice"],
