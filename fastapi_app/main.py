@@ -267,7 +267,7 @@ async def fin_report_endpoint(
                     "delivery_rub": 0,
                     "acceptance": 0,
                     "color": i["color"].strip('"') if i.get("color") else 'Цвет не указан',
-                    "supplier_oper_name": "",
+                    "supplier_oper_name": "Хранение",
                 })
 
             return response
