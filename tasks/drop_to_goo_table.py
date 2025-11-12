@@ -64,15 +64,7 @@ async def upload_dimensions_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(9)] for _ in range(clear_rows)]
-
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:I{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         update_google_sheet_data(
             spreadsheet_url=url,
@@ -150,15 +142,7 @@ async def upload_advconversion_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(10)] for _ in range(clear_rows)]
-
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:J{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         update_google_sheet_data(
             spreadsheet_url=url,
@@ -223,15 +207,7 @@ async def upload_advcost_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(7)] for _ in range(clear_rows)]
-
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:G{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         update_google_sheet_data(
             spreadsheet_url=url,
@@ -297,15 +273,7 @@ async def upload_salesreport_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(8)] for _ in range(clear_rows)]
-
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:H{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         update_google_sheet_data(
             spreadsheet_url=url,
@@ -371,15 +339,7 @@ async def upload_ostatki_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(10)] for _ in range(clear_rows)]
-
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:J{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         update_google_sheet_data(
             spreadsheet_url=url,
@@ -446,9 +406,6 @@ async def upload_products_stat_to_google():
     data += reform_data
 
     try:
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(8)] for _ in range(clear_rows)]
-
         clear_list(url, name)
 
         update_google_sheet_data(
