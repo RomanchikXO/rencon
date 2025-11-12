@@ -90,6 +90,7 @@ class OrdersAdmin(admin.ModelAdmin):
 
 class FinDataAdmin(admin.ModelAdmin):
     list_display = ('rr_dt', 'nmid', 'ts_name')
+    search_fields = ('supplier_oper_name',)
     ordering = ('rrd_id',)
 
 class SaveDataAdmin(admin.ModelAdmin):
