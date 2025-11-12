@@ -529,11 +529,14 @@ async def upload_fin_report_to_google():
         clear_rows = max(1000, len(data) + 300)
         clear_data = [["" for _ in range(18)] for _ in range(clear_rows)]
 
-        logger.info(f"Данные подготовлены: кол-во строк {len(data)}, кол-во клеток: {len(data) * 18}")
-        raise
-
-        update_google_sheet_data(url, name, f"A1:R{clear_rows}", clear_data)
-        update_google_sheet_data(url, name, f"A1:R{len(data)}", data, as_user_input=True)
+        try:
+            update_google_sheet_data(url, name, f"A1:R{clear_rows}", clear_data)
+        except Exception as e:
+            raise Exception(f"в первом запросе: {e}")
+        try:
+            update_google_sheet_data(url, name, f"A1:R{len(data)}", data, as_user_input=True)
+        except Exception as e:
+            raise Exception(f"во втором запросе: {e}")
 
         # ✅ Вставляем формулу отдельно (так она реально сработает)
         sheet = gspread.authorize(Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)) \
