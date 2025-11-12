@@ -94,6 +94,7 @@ def update_google_sheet_data(
             sheet.update(data_range, values)
     except Exception as e:
         if "increase the number of cells in the workbook above the limit" in str(e):
+            e = str(e)
             e += f" кол-во строк: {len(values)}. кол-во ячеек: {len(values)* len(values[0])}"
         logger.error(f"Ошибка обновления данных в гугл таблице: {e}. Функция update_google_sheet_data")
 
