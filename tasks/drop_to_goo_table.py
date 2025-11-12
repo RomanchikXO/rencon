@@ -561,7 +561,7 @@ async def upload_save_data_to_google():
                     "date_wb"],
             ]
             for inn, stats_list in results_by_inn.items()
-            for stat in stats_list if stat["supplier_oper_name"] not in ['', 'хранение']
+            for stat in stats_list if stat["supplier_oper_name"] in ['хранение']
         ]
     except Exception as e:
         logger.error(f"Ошибка обработки данных в upload_save_data_to_google: {e}")
