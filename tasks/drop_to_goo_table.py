@@ -477,7 +477,7 @@ async def upload_fin_report_to_google():
                 stat["retail_amount"] - stat["ppvz_for_pay"]
             ]
             for inn, stats_list in results_by_inn.items()
-            for stat in stats_list if not stat["supplier_oper_name"] in ['', 'хранение']
+            for stat in stats_list if stat["supplier_oper_name"] not in ['', 'хранение']
         ]
     except Exception as e:
         logger.error(f"Ошибка обработки данных в upload_fin_report_to_google: {e}")
@@ -514,3 +514,77 @@ async def upload_fin_report_to_google():
 
     except Exception as e:
         logger.error(f"Ошибка загрузки fin_report в таблицу: {e}")
+
+
+@with_db_connection
+async def upload_save_data_to_google():
+    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=711193990#gid=711193990"
+    name = "SavesData"
+
+    sloi = await get_sloy()
+
+    date_from_str = await get_first_day_last_month()
+
+    query_inns = select(wblk_table.c.inn)
+    rows = await database.fetch_all(query_inns)
+    inns = [int(row["inn"]) for row in rows]
+
+    payloads = [FinReportRequest(
+        inn=inn,
+        date_from=date_from_str,
+        supplier_oper_name=['хранение', 'хранение товара с низким индексом остатка'])
+        for inn in inns]
+
+    # Запускаем все запросы параллельно
+    results_list = await asyncio.gather(*[fin_report_endpoint(payload=payload, token=BEARER) for payload in payloads])
+
+    # Создаем словарь: ключ — inn, значение — результат
+    results_by_inn = {inn: result["data"] for inn, result in zip(inns, results_list)}
+
+    headers = [
+        "inn", "nmid", "vendorcode", "subjectname", "warehousePrice", "color", "supplier_oper_name", "Слой", "date_wb"
+    ]
+    data = [headers]
+
+    try:
+        reform_data = [
+            [
+                inn,
+                stat["nmid"],
+                stat["vendorcode"],
+                stat["subjectname"],
+                stat["warehousePrice"],
+                stat["color"],
+                stat["supplier_oper_name"],
+                sloi.get(stat["vendorcode"], "Слой не обнаружен"),
+                stat["date_wb"].strftime("%d.%m.%Y") if isinstance(stat["date_wb"], (date, datetime)) else stat[
+                    "date_wb"],
+            ]
+            for inn, stats_list in results_by_inn.items()
+            for stat in stats_list if stat["supplier_oper_name"] not in ['', 'хранение']
+        ]
+    except Exception as e:
+        logger.error(f"Ошибка обработки данных в upload_save_data_to_google: {e}")
+        raise
+
+    data += reform_data
+
+    BATCH_SIZE = 50000  # количество строк за один запрос
+    NUM_COLS = 9  # столбцы A-Q
+    def batch_update(sheet_name, data, as_user_input=False):
+        total_rows = len(data)
+        for start in range(0, total_rows, BATCH_SIZE):
+            end = min(start + BATCH_SIZE, total_rows)
+            batch = data[start:end]
+            range_str = f"A{start + 1}:I{end}"
+            update_google_sheet_data(url, sheet_name, range_str, batch, as_user_input=as_user_input)
+
+    try:
+        # 1️⃣ Перетираем старые данные батчами
+        clear_list(url, name)
+
+        # 2️⃣ Загружаем новые данные батчами
+        batch_update(name, data, as_user_input=True)
+
+    except Exception as e:
+        logger.error(f"Ошибка загрузки save_data в таблицу: {e}")
