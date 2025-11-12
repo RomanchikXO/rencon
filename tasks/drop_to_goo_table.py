@@ -477,7 +477,7 @@ async def upload_fin_report_to_google():
                 stat["retail_amount"] - stat["ppvz_for_pay"]
             ]
             for inn, stats_list in results_by_inn.items()
-            for stat in stats_list
+            for stat in stats_list if stat["supplier_oper_name"] != ''
         ]
     except Exception as e:
         logger.error(f"Ошибка обработки данных в upload_fin_report_to_google: {e}")
