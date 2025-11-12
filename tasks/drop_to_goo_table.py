@@ -136,7 +136,7 @@ async def upload_advconversion_to_google():
                 stat["atbs"],
                 stat["orders"],
                 stat["nmid"],
-                stat["date_wb"].strftime("%Y-%m-%d"),
+                stat["date_wb"].strftime("%d.%m.%Y"),
                 stat["color"],
                 sloi.get(stat["vendorcode"], "Слой не обнаружен")
             ]
@@ -210,7 +210,7 @@ async def upload_advcost_to_google():
                 stat["nmid"],
                 stat["cost"],
                 stat["color"],
-                stat["date_wb"].strftime("%Y-%m-%d"),
+                stat["date_wb"].strftime("%d.%m.%Y"),
                 sloi.get(stat["vendorcode"], "Слой не обнаружен")
             ]
             for inn, stats_list in results_by_inn.items()
@@ -284,7 +284,7 @@ async def upload_salesreport_to_google():
                 stat["sht"],
                 stat["nmid"],
                 stat["color"],
-                stat["date_wb"].strftime("%Y-%m-%d"),
+                stat["date_wb"].strftime("%d.%m.%Y"),
                 sloi.get(stat["vendorcode"], "Слой не обнаружен")
             ]
             for inn, stats_list in results_by_inn.items()
@@ -430,7 +430,7 @@ async def upload_products_stat_to_google():
                 inn,
                 stat["vendorcode"],
                 stat["nmid"],
-                stat["date_wb"].strftime("%Y-%m-%d"),
+                stat["date_wb"].strftime("%d.%m.%Y"),
                 stat["color"],
                 stat["ordersSumRub"],
                 stat["ordersCount"],
