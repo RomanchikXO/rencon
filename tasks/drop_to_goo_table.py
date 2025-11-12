@@ -10,7 +10,7 @@ import logging
 from decorators import with_db_connection
 from google.functions import (update_google_sheet_data, fetch_google_sheet_data, gspread, SCOPES, Credentials,
                               CREDENTIALS_FILE)
-from datetime import date
+from datetime import date, datetime
 from fastapi_app.main import database
 
 
@@ -512,8 +512,10 @@ async def upload_fin_report_to_google():
                 stat["delivery_rub"],
                 stat["acceptance"],
                 stat.get("penalty", 0),
-                stat["date_wb"],
-                stat["sale_dt"] if stat.get("sale_dt") else "",
+                stat["date_wb"].isoformat() if isinstance(stat["date_wb"], (date, datetime)) else stat["date_wb"],
+                stat["sale_dt"].isoformat() if stat.get("sale_dt") and isinstance(stat["sale_dt"],
+                                                                                  (date, datetime)) else (
+                            stat.get("sale_dt") or ""),
                 stat["color"],
                 stat["supplier_oper_name"],
                 stat["subjectname"],
