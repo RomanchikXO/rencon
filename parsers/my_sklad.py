@@ -10,7 +10,7 @@ import time
 from database.DataBase import async_connect_to_database
 from database.funcs_db import add_set_data_from_db
 from django.utils.dateparse import parse_datetime
-from google.functions import update_google_sheet_data
+from google.functions import update_google_sheet_data, clear_list
 from datetime import timedelta
 
 logger = ContextLogger(logging.getLogger("parsers"))
@@ -324,6 +324,8 @@ async def get_and_save_mysklad_data() -> None:
 
 
 async def update_google_table_mysklad() -> None:
+    url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    name = "Лист1"
     conn = None
     try:
         conn = await async_connect_to_database()
@@ -370,22 +372,12 @@ async def update_google_table_mysklad() -> None:
                 row["size_ru"] or "",
             ])
 
-        # вычисляем безопасный диапазон очистки — чуть больше, чем количество строк
-        clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(10)] for _ in range(clear_rows)]
-
-        # очищаем диапазон (одним вызовом)
-        update_google_sheet_data(
-            spreadsheet_url="https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0",
-            sheet_identifier=0,
-            data_range=f"A1:J{clear_rows}",
-            values=clear_data
-        )
+        clear_list(url, name)
 
         # выгружаем актуальные данные
         update_google_sheet_data(
-            spreadsheet_url="https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0",
-            sheet_identifier=0,
+            spreadsheet_url=url,
+            sheet_identifier=name,
             data_range=f"A1:J{len(data)}",
             values=data
         )
