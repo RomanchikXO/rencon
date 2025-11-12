@@ -142,7 +142,7 @@ services:
     command: ["celery", "-A", "django_app.celery_config", "beat", "--loglevel=info", "--pidfile=", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
 
   flower:
-    image: mher/flower:1.0.0
+    image: mher/flower:latest
     container_name: celery_flower
     ports:
       - "5555:5555"
