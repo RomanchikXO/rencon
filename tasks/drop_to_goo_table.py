@@ -531,26 +531,34 @@ async def upload_fin_report_to_google():
 
     data += reform_data
 
+    BATCH_SIZE = 50000  # количество строк за один запрос
+    NUM_COLS = 17  # столбцы A-Q
+    def batch_update(sheet_name, data, as_user_input=False):
+        total_rows = len(data)
+        for start in range(0, total_rows, BATCH_SIZE):
+            end = min(start + BATCH_SIZE, total_rows)
+            batch = data[start:end]
+            range_str = f"A{start + 1}:Q{end}"
+            update_google_sheet_data(url, sheet_name, range_str, batch, as_user_input=as_user_input)
+
     try:
+        # 1️⃣ Перетираем старые данные батчами
         clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(17)] for _ in range(clear_rows)]
+        clear_data = [["" for _ in range(NUM_COLS)] for _ in range(clear_rows)]
+        batch_update(name, clear_data)  # as_user_input=False по умолчанию
 
-        try:
-            update_google_sheet_data(url, name, f"A1:Q{clear_rows}", clear_data)
-        except Exception as e:
-            raise Exception(f"в первом запросе: {e}")
-        try:
-            update_google_sheet_data(url, name, f"A1:Q{len(data)}", data, as_user_input=True)
-        except Exception as e:
-            raise Exception(f"во втором запросе: {e}")
+        # 2️⃣ Загружаем новые данные батчами
+        batch_update(name, data, as_user_input=True)
 
-        # ✅ Вставляем формулу отдельно (так она реально сработает)
-        sheet = gspread.authorize(Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)) \
-            .open_by_url(url).worksheet(name)
+        # 3️⃣ Вставляем формулу отдельно
+        sheet = gspread.authorize(
+            Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+        ).open_by_url(url).worksheet(name)
 
         sheet.update_acell(
             "P2",
             "=ARRAYFORMULA(IF(O2:O=\"\";\"\";IFERROR(VLOOKUP(O2:O;'Себес'!B:C;2;FALSE))))"
         )
+
     except Exception as e:
         logger.error(f"Ошибка загрузки fin_report в таблицу: {e}")
