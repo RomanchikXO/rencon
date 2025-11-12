@@ -512,8 +512,8 @@ async def upload_fin_report_to_google():
                 stat["delivery_rub"],
                 stat["acceptance"],
                 stat.get("penalty", 0),
-                stat["date_wb"].isoformat() if isinstance(stat["date_wb"], (date, datetime)) else stat["date_wb"],
-                stat["sale_dt"].isoformat() if stat.get("sale_dt") and isinstance(stat["sale_dt"],
+                stat["date_wb"].strftime("%d.%m.%Y") if isinstance(stat["date_wb"], (date, datetime)) else stat["date_wb"],
+                stat["sale_dt"].strftime("%d.%m.%Y") if stat.get("sale_dt") and isinstance(stat["sale_dt"],
                                                                                   (date, datetime)) else (
                             stat.get("sale_dt") or ""),
                 stat["color"],
@@ -559,7 +559,7 @@ async def upload_fin_report_to_google():
 
         sheet.update_acell(
             "P2",
-            "=ARRAYFORMULA(IF(O2:O=\"\";\"\";IFERROR(VLOOKUP(O2:O;'Себес'!B:C;2;FALSE))))"
+            "=ARRAYFORMULA(IF(N2:N="";"";IFERROR(VLOOKUP(N2:N;'Себес'!B:C;2;FALSE))))"
         )
 
     except Exception as e:
