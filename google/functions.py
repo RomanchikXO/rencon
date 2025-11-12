@@ -41,6 +41,20 @@ def get_column_letter(n: int):
     return result
 
 
+def clear_list(url: str, name: str):
+    """
+    очистить весь лист
+    :param url: ссылка на лист
+    :param name: имя листа
+    :return:
+    """
+    sheet = gspread.authorize(
+        Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+    ).open_by_url(url).worksheet(name)
+
+    sheet.clear()
+
+
 def get_ids_pages_table(url) -> List:
     response = []
 

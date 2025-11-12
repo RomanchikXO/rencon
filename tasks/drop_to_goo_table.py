@@ -9,7 +9,7 @@ from context_logger import ContextLogger
 import logging
 from decorators import with_db_connection
 from google.functions import (update_google_sheet_data, fetch_google_sheet_data, gspread, SCOPES, Credentials,
-                              CREDENTIALS_FILE)
+                              CREDENTIALS_FILE, clear_list)
 from datetime import date, datetime
 from fastapi_app.main import database
 
@@ -545,9 +545,7 @@ async def upload_fin_report_to_google():
 
     try:
         # 1️⃣ Перетираем старые данные батчами
-        clear_rows = max(1000, len(data))
-        clear_data = [["" for _ in range(NUM_COLS)] for _ in range(clear_rows)]
-        batch_update(name, clear_data)  # as_user_input=False по умолчанию
+        clear_list(url, name)
 
         # 2️⃣ Загружаем новые данные батчами
         batch_update(name, data, as_user_input=True)
