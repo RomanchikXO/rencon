@@ -2,13 +2,14 @@ import asyncio
 
 from fastapi_app.main import (wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost,
                               get_adv_reg_sales, ProductsQuantRequest, products_quantity_endpoint,
-                              products_stat_endpoint)
+                              products_stat_endpoint, fin_report_endpoint, FinReportRequest)
 from sqlalchemy import select
 from loader import BEARER
 from context_logger import ContextLogger
 import logging
 from decorators import with_db_connection
-from google.functions import update_google_sheet_data, fetch_google_sheet_data
+from google.functions import (update_google_sheet_data, fetch_google_sheet_data, gspread, SCOPES, Credentials,
+                              CREDENTIALS_FILE)
 from datetime import date
 from fastapi_app.main import database
 
@@ -463,3 +464,80 @@ async def upload_products_stat_to_google():
         )
     except Exception as e:
         logger.error(f"Ошибка загрузки products_stat в таблицу: {e}")
+
+
+@with_db_connection
+async def upload_fin_report_to_google():
+    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1889074269#gid=1889074269"
+    name = "FinancialData"
+
+    sloi = await get_sloy()
+
+    date_from_str = await get_first_day_last_month()
+
+    query_inns = select(wblk_table.c.inn)
+    rows = await database.fetch_all(query_inns)
+    inns = [int(row["inn"]) for row in rows]
+
+    payloads = [FinReportRequest(inn=inn, date_from=date_from_str) for inn in inns]
+
+    # Запускаем все запросы параллельно
+    results_list = await asyncio.gather(*[fin_report_endpoint(payload=payload, token=BEARER) for payload in payloads])
+
+    # Создаем словарь: ключ — inn, значение — результат
+    results_by_inn = {inn: result["data"] for inn, result in zip(inns, results_list)}
+
+    headers = [
+        "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "date_wb",
+        "sale_dt", "color", "supplier_oper_name", "warehousePrice", "subjectname", "vendorcode", "Слой",
+        "Стоимость закупа", "Комиссия"
+    ]
+    data = [headers]
+
+    try:
+        reform_data = [
+            [
+                inn,
+                stat["nmid"],
+                stat["retail_price"],
+                stat["retail_amount"],
+                stat["ppvz_for_pay"],
+                stat["delivery_rub"],
+                stat["acceptance"],
+                stat["date_wb"],
+                stat["sale_dt"],
+                stat["color"],
+                stat["supplier_oper_name"],
+                stat["warehousePrice"],
+                stat["subjectname"],
+                stat["vendorcode"],
+                sloi.get(stat["vendorcode"], "Слой не обнаружен"),
+                "",
+                stat["retail_amount"] - stat["ppvz_for_pay"]
+            ]
+            for inn, stats_list in results_by_inn.items()
+            for stat in stats_list
+        ]
+    except Exception as e:
+        logger.error(f"Ошибка обработки данных в upload_fin_report_to_google: {e}")
+        raise
+
+    data += reform_data
+
+    try:
+        clear_rows = max(1000, len(data) + 300)
+        clear_data = [["" for _ in range(18)] for _ in range(clear_rows)]
+
+        update_google_sheet_data(url, name, f"A1:R{clear_rows}", clear_data)
+        update_google_sheet_data(url, name, f"A1:R{len(data)}", data, as_user_input=True)
+
+        # ✅ Вставляем формулу отдельно (так она реально сработает)
+        sheet = gspread.authorize(Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)) \
+            .open_by_url(url).worksheet(name)
+
+        sheet.update_acell(
+            "Q2",
+            "=ARRAYFORMULA(IF(O2:O=\"\";\"\";IFERROR(VLOOKUP(O2:O;'Себес'!B:C;2;FALSE))))"
+        )
+    except Exception as e:
+        logger.error(f"Ошибка загрузки fin_report в таблицу: {e}")

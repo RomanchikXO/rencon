@@ -55,7 +55,13 @@ def get_ids_pages_table(url) -> List:
 
     return response
 
-def update_google_sheet_data(spreadsheet_url: str, sheet_identifier: Union[int, str], data_range: str, values: List[list]):
+def update_google_sheet_data(
+        spreadsheet_url: str,
+        sheet_identifier: Union[int, str],
+        data_range: str,
+        values: List[list],
+        as_user_input: bool = False
+):
     """
     Функция для обновления данных в Google Таблице.
 
@@ -64,6 +70,7 @@ def update_google_sheet_data(spreadsheet_url: str, sheet_identifier: Union[int, 
     :param data_range: Диапазон данных в формате A1 (например, 'W4:AA34')
     :param values: Данные для обновления в виде списка списков
     :return: None
+    Если as_user_input=True, данные вставляются как будто введены вручную (USER_ENTERED)
     """
     # Подключение к API
     credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
@@ -80,9 +87,12 @@ def update_google_sheet_data(spreadsheet_url: str, sheet_identifier: Union[int, 
 
     # Обновляем данные в указанном диапазоне
     try:
-        sheet.update(data_range, values)
+        if as_user_input:
+            sheet.update(data_range, values, value_input_option="USER_ENTERED")
+        else:
+            sheet.update(data_range, values)
     except Exception as e:
-        logger.error(f"Ошибка обновления данных в гугл таблице:{e}. Функция update_google_sheet_data")
+        logger.error(f"Ошибка обновления данных в гугл таблице: {e}. Функция update_google_sheet_data")
 
 
 def cleare_num(cell: str) -> Union[int, bool]:

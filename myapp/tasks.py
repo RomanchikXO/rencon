@@ -9,7 +9,7 @@ from tasks.google_our_prices import get_products_and_prices
 from tasks.google_reviews import fetch_data__get_feedback
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
-                                     upload_products_stat_to_google)
+                                     upload_products_stat_to_google, upload_fin_report_to_google)
 
 import logging
 from decorators import with_task_context
@@ -135,6 +135,14 @@ def upload_products_stat_to_google_task():
     logger.info("🟢 Загрузка products_stat в гугл табл")
     asyncio.run(upload_products_stat_to_google())
     logger.info("Products_stat в гугл табл ЗАГРУЖЕНО")
+
+
+@shared_task
+@with_task_context("upload_fin_report_to_google_task")
+def upload_fin_report_to_google_task():
+    logger.info("🟢 Загрузка fin_report в гугл табл")
+    asyncio.run(upload_fin_report_to_google())
+    logger.info("Fin_report в гугл табл ЗАГРУЖЕНО")
 
 
 @shared_task
