@@ -56,16 +56,6 @@ def get_ids_pages_table(url) -> List:
     return response
 
 
-class GoogleSheetCellLimitError(Exception):
-    """Ошибка превышения лимита ячеек Google Sheets."""
-    def __init__(self, rows, cols, total_cells, message=None):
-        self.rows = rows
-        self.cols = cols
-        self.total_cells = total_cells
-        self.message = message or f"Попытка записать {total_cells} ячеек ({rows}x{cols}) превышает лимит Google Sheets"
-        super().__init__(self.message)
-
-
 def update_google_sheet_data(
         spreadsheet_url: str,
         sheet_identifier: Union[int, str],
@@ -83,12 +73,6 @@ def update_google_sheet_data(
     :return: None
     Если as_user_input=True, данные вставляются как будто введены вручную (USER_ENTERED)
     """
-
-    from gspread.exceptions import APIError
-    rows = len(values)
-    cols = max(len(row) for row in values) if values else 0
-    total_cells = rows * cols
-
     # Подключение к API
     credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
     client = gspread.authorize(credentials)
@@ -108,15 +92,10 @@ def update_google_sheet_data(
             sheet.update(data_range, values, value_input_option="USER_ENTERED")
         else:
             sheet.update(data_range, values)
-    except APIError as e:
-        # Специально проверяем код ошибки 400 с лимитом ячеек
-        if "increase the number of cells in the workbook above the limit" in str(e):
-            raise GoogleSheetCellLimitError(rows, cols, total_cells, str(e)) from e
-        else:
-            raise  # другие ошибки API пробрасываем дальше
     except Exception as e:
+        if "increase the number of cells in the workbook above the limit" in str(e):
+            e += f" кол-во строк: {len(values)}. кол-во ячеек: {len(values)* len(values[0])}"
         logger.error(f"Ошибка обновления данных в гугл таблице: {e}. Функция update_google_sheet_data")
-        raise
 
 
 def cleare_num(cell: str) -> Union[int, bool]:
