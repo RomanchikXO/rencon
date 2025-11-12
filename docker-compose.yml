@@ -128,7 +128,7 @@ services:
     environment:
       LOGIN_MY_SKLAD: ${LOGIN_MY_SKLAD}
       PASS_MY_SKLAD: ${PASS_MY_SKLAD}
-    command: ["celery", "-A", "django_app.celery_config", "worker", "--loglevel=info", "--pidfile="]
+    command: ["celery", "-A", "django_app.celery_config", "worker", "--loglevel=info", "--pidfile=", "--concurrency=8"]
 
   beat:
     build: .
