@@ -559,7 +559,7 @@ async def upload_fin_report_to_google():
 
         sheet.update_acell(
             "P2",
-            "=ARRAYFORMULA(IF(N2:N="";"";IFERROR(VLOOKUP(N2:N;'Себес'!B:C;2;FALSE))))"
+            """=ARRAYFORMULA(IF(N2:N="";"";IFERROR(VLOOKUP(N2:N;'Себес'!B:C;2;FALSE))))"""
         )
 
     except Exception as e:
