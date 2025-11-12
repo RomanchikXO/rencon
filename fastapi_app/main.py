@@ -205,7 +205,7 @@ async def fin_report_endpoint(
             query_save = query_save.where(savedata_table.c.date_wb < date_to)
         if payload.supplier_oper_name:
             supplier_oper_name = [i.lower() for i in payload.supplier_oper_name]
-            query_stats = query_stats.where(findata_table.c.supplier_oper_name.in_(supplier_oper_name))
+            query_stats = query_stats.where(func.lower(findata_table.c.supplier_oper_name).in_(supplier_oper_name))
         if payload.sizes:
             sizes = [i.lower() for i in payload.sizes]
             query_stats = query_stats.where(findata_table.c.ts_name.in_(sizes))
