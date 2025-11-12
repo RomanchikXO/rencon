@@ -479,7 +479,14 @@ async def upload_fin_report_to_google():
     rows = await database.fetch_all(query_inns)
     inns = [int(row["inn"]) for row in rows]
 
-    payloads = [FinReportRequest(inn=inn, date_from=date_from_str) for inn in inns]
+    payloads = [FinReportRequest(
+        inn=inn,
+        date_from=date_from_str,
+        supplier_oper_name=['возврат', 'добровольная компенсация при возврате',
+                            'компенсация скидки по программе лояльности', 'компенсация ущерба', 'коррекция логистики',
+                            'логистика', 'платная приемка', 'продажа', 'стоимость участия в программе лояльности',
+                            'сумма удержанная за начисленные баллы программы лояльности', 'удержание', 'штраф'])
+        for inn in inns]
 
     # Запускаем все запросы параллельно
     results_list = await asyncio.gather(*[fin_report_endpoint(payload=payload, token=BEARER) for payload in payloads])
@@ -489,7 +496,7 @@ async def upload_fin_report_to_google():
 
     headers = [
         "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "penalty", "date_wb",
-        "sale_dt", "color", "supplier_oper_name", "warehousePrice", "subjectname", "vendorcode", "Слой",
+        "sale_dt", "color", "supplier_oper_name", "subjectname", "vendorcode", "Слой",
         "Стоимость закупа", "Комиссия"
     ]
     data = [headers]
@@ -509,7 +516,6 @@ async def upload_fin_report_to_google():
                 stat["sale_dt"] if stat.get("sale_dt") else "",
                 stat["color"],
                 stat["supplier_oper_name"],
-                stat["warehousePrice"],
                 stat["subjectname"],
                 stat["vendorcode"],
                 sloi.get(stat["vendorcode"], "Слой не обнаружен"),
@@ -527,14 +533,14 @@ async def upload_fin_report_to_google():
 
     try:
         clear_rows = max(1000, len(data) + 300)
-        clear_data = [["" for _ in range(18)] for _ in range(clear_rows)]
+        clear_data = [["" for _ in range(17)] for _ in range(clear_rows)]
 
         try:
-            update_google_sheet_data(url, name, f"A1:R{clear_rows}", clear_data)
+            update_google_sheet_data(url, name, f"A1:Q{clear_rows}", clear_data)
         except Exception as e:
             raise Exception(f"в первом запросе: {e}")
         try:
-            update_google_sheet_data(url, name, f"A1:R{len(data)}", data, as_user_input=True)
+            update_google_sheet_data(url, name, f"A1:Q{len(data)}", data, as_user_input=True)
         except Exception as e:
             raise Exception(f"во втором запросе: {e}")
 
@@ -543,7 +549,7 @@ async def upload_fin_report_to_google():
             .open_by_url(url).worksheet(name)
 
         sheet.update_acell(
-            "Q2",
+            "P2",
             "=ARRAYFORMULA(IF(O2:O=\"\";\"\";IFERROR(VLOOKUP(O2:O;'Себес'!B:C;2;FALSE))))"
         )
     except Exception as e:

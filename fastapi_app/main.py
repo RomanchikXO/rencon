@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Dict, Union, Optional, List
 
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String, text, and_, not_
+from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String, text
 from .database import database
 from pydantic import BaseModel, Field, RootModel
 from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
@@ -183,15 +183,7 @@ async def fin_report_endpoint(
             color_expr
         )
         .join(nmids_table, nmids_table.c.nmid == findata_table.c.nmid)
-        .where(
-            and_(
-                findata_table.c.nmid.in_(nmids_list),
-                ~findata_table.c.supplier_oper_name.in_([
-                    'возмещение издержек по перевозке/по складским операциям с товаром',
-                    'возмещение за выдачу и возврат товаров на пвз'
-                ])
-            )
-        ))
+       .where(findata_table.c.nmid.in_(nmids_list)))
 
         query_save = (select(
             nmids_table.c.subjectname,
