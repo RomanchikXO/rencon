@@ -30,4 +30,9 @@ docker-compose up --build -d
 # при изменениях в django_app/ logg_set.py
 # автоматически на сервере django_app перезапускается
 
+# чтобы мониторить таски с локального компа надо прокинуть ssh порт
+# ssh -L 5555:localhost:5555 root@95.215.56.26  
+# http://localhost:5555/
+
+
 # Удачи!
