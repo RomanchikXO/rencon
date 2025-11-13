@@ -325,7 +325,7 @@ async def get_and_save_mysklad_data() -> None:
 
 async def update_google_table_mysklad() -> None:
     url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
-    name = "Лист1"
+    name = "MySklad"
     conn = None
     try:
         conn = await async_connect_to_database()
