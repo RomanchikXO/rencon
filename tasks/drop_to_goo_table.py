@@ -87,23 +87,28 @@ async def get_first_day_last_month() -> str:
 
 
 @with_db_connection
-async def upload_advconversion_to_google():
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
-    name = "AdvConversion"
+async def upload_advconversion_to_google(mode):
+    if mode == "Dima":
+        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
+    elif mode == "Anna":
+        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+
+    name_list = "AdvConversion"
 
     sloi = await get_sloy()
 
     date_from_str = await get_first_day_last_month()
 
     query_inns = select(
-        wblk_table.c.inn
+        wblk_table.c.inn,
+        wblk_table.c.name
     )
     rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    inns = {int(row["inn"]): row["name"] for row in rows}
 
     payloads = [
         ProductsStatRequest(inn=inn, date_from=date_from_str)
-        for inn in inns
+        for inn, name in inns.items()
     ]
 
     # Запускаем все запросы параллельно
@@ -114,44 +119,78 @@ async def upload_advconversion_to_google():
     # Создаем словарь: ключ — inn, значение — результат
     results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
 
+    reform_data = {}
 
-    headers = ["инн", "артикул продавца", "клики", "показы", "корзина", "заказ", "артикул wb", "дата", "цвет", "слой"]
-    data = [headers]
-
-    try:
-        reform_data = [
-            [
-                inn,
-                stat["vendorcode"],
-                stat["clicks"],
-                stat["views"],
-                stat["atbs"],
-                stat["orders"],
-                stat["nmid"],
-                stat["date_wb"].strftime("%d.%m.%Y"),
-                stat["color"],
-                sloi.get(stat["vendorcode"], "Слой не обнаружен")
+    if mode == "Dima":
+        headers = ["инн", "артикул продавца", "клики", "показы", "корзина", "заказ", "артикул wb", "дата", "цвет", "слой"]
+        try:
+            intermed_data = [
+                [
+                    inn,
+                    stat["vendorcode"],
+                    stat["clicks"],
+                    stat["views"],
+                    stat["atbs"],
+                    stat["orders"],
+                    stat["nmid"],
+                    stat["date_wb"].strftime("%d.%m.%Y"),
+                    stat["color"],
+                    sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                ]
+                for inn, stats_list in results_by_inn.items()
+                for stat in stats_list
             ]
-            for inn, stats_list in results_by_inn.items()
-            for stat in stats_list
-        ]
-    except Exception as e:
-        logger.error(f"Ошибка обработки данных в upload_advconversion_to_google: {e}")
-        raise
 
-    data += reform_data
+            reform_data[""] = intermed_data
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
+            raise
+    elif mode == "Anna":
+        headers = ["артикул продавца", "клики", "показы", "корзина", "заказ", "артикул wb", "дата", "цвет", "слой"]
+        try:
+            for inn, stats_list in results_by_inn.items():
+                intermed_data = [
+                    [
+                        stat["vendorcode"],
+                        stat["clicks"],
+                        stat["views"],
+                        stat["atbs"],
+                        stat["orders"],
+                        stat["nmid"],
+                        stat["date_wb"].strftime("%d.%m.%Y"),
+                        stat["color"],
+                        sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                    ]
+                    for stat in stats_list
+                ]
 
-    try:
-        clear_list(url, name)
+                reform_data[inns.get(inn)] = intermed_data
 
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:J{len(data)}",
-            values=data
-        )
-    except Exception as e:
-        logger.error(f"Ошибка загрузки advconversion в таблицу: {e}")
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
+
+
+    for name, intermed_data in reform_data.items():
+        data = [headers]
+        data += intermed_data
+
+        letter = "J" if mode == "Dima" else "I"
+        name = name_list + name
+
+        try:
+            try:
+                clear_list(url, name)
+            except:
+                pass
+
+            update_google_sheet_data(
+                spreadsheet_url=url,
+                sheet_identifier=name,
+                data_range=f"A1:{letter}{len(data)}",
+                values=data
+            )
+        except Exception as e:
+            logger.error(f"Ошибка загрузки advconversion в таблицу: {e}")
 
 
 @with_db_connection

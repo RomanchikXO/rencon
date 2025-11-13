@@ -123,6 +123,30 @@ def get_prices_and_products():
 
 
 @shared_task
+@with_task_context("get_nmids_to_db")
+def get_nmids_to_db():
+    logger.info("🟢 Обновляем таблицу со всеми артикулами в бд")
+    asyncio.run(get_nmids())
+    logger.info("Таблица со всеми артикулами обновлена")
+
+
+@shared_task
+@with_task_context("get_stocks_to_db")
+def get_stocks_to_db():
+    logger.info("🟢 Обновляем таблицу с остатками товаров на складах в бд")
+    asyncio.run(get_stocks_data_2_weeks())
+    logger.info("Таблица с остатками товаров на складах обновлена")
+
+
+@shared_task
+@with_task_context("get_orders_to_db")
+def get_orders_to_db():
+    logger.info("🟢 Обновляем таблицу с заказами в бд")
+    asyncio.run(get_orders())
+    logger.info("Таблица с заказами в бд обновлена")
+
+
+@shared_task
 @with_task_context("upload_dimensions_to_google_task")
 def upload_dimensions_to_google_task():
     logger.info("🟢 Загрузка dimensions в гугл табл")
@@ -177,31 +201,7 @@ def upload_ostatki_to_google_task():
 
 @shared_task
 @with_task_context("upload_advconversion_to_google_task")
-def upload_advconversion_to_google_task():
+def upload_advconversion_to_google_task(mode="Dima"):
     logger.info("🟢 Загрузка advconconversion в гугл табл")
-    asyncio.run(upload_advconversion_to_google())
+    asyncio.run(upload_advconversion_to_google(mode))
     logger.info("Advconconversion в гугл табл ЗАГРУЖЕНО")
-
-
-@shared_task
-@with_task_context("get_nmids_to_db")
-def get_nmids_to_db():
-    logger.info("🟢 Обновляем таблицу со всеми артикулами в бд")
-    asyncio.run(get_nmids())
-    logger.info("Таблица со всеми артикулами обновлена")
-
-
-@shared_task
-@with_task_context("get_stocks_to_db")
-def get_stocks_to_db():
-    logger.info("🟢 Обновляем таблицу с остатками товаров на складах в бд")
-    asyncio.run(get_stocks_data_2_weeks())
-    logger.info("Таблица с остатками товаров на складах обновлена")
-
-
-@shared_task
-@with_task_context("get_orders_to_db")
-def get_orders_to_db():
-    logger.info("🟢 Обновляем таблицу с заказами в бд")
-    asyncio.run(get_orders())
-    logger.info("Таблица с заказами в бд обновлена")
