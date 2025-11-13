@@ -1693,12 +1693,15 @@ async def make_and_get_save_report():
         param["task_id"] = task_id
 
         for i in range(1,5):
-            await asyncio.sleep(10*i)
             if i == 4:
                 logger.error(f"Ошибка получения данных о платном хранении для {cab['name']}")
                 return
             async with aiohttp.ClientSession() as session:
-                response = await wb_api(session, param)
+                try:
+                    response = await wb_api(session, param)
+                except Exception as e:
+                    await asyncio.sleep(60)
+                    continue
                 try:
                     conn = await async_connect_to_database()
                     if not conn:
