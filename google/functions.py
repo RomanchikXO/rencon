@@ -4,6 +4,7 @@ import re
 import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from gspread.exceptions import WorksheetNotFound
 import os
 
 import logging
@@ -95,10 +96,20 @@ def update_google_sheet_data(
     spreadsheet = client.open_by_url(spreadsheet_url)
 
     # Получаем лист (по индексу или имени)
-    if isinstance(sheet_identifier, int):
-        sheet = spreadsheet.get_worksheet(sheet_identifier)
-    else:
-        sheet = spreadsheet.worksheet(sheet_identifier)
+    try:
+        # Если sheet_identifier — это число → обращаемся по индексу
+        if isinstance(sheet_identifier, int):
+            sheet = spreadsheet.get_worksheet(sheet_identifier)
+            if sheet is None:
+                raise WorksheetNotFound
+        else:
+            sheet = spreadsheet.worksheet(str(sheet_identifier))
+    except WorksheetNotFound:
+        # Если лист не существует — создаём новый
+        sheet_title = str(sheet_identifier) if not isinstance(sheet_identifier, int) else f"Sheet{sheet_identifier}"
+        rows = len(values)
+        cols = len(values[0]) if values else 1
+        sheet = spreadsheet.add_worksheet(title=sheet_title, rows=str(rows), cols=str(cols))
 
     # Обновляем данные в указанном диапазоне
     try:
@@ -274,7 +285,7 @@ def update_google_sheet_data_with_format(
 def add_nmids_to_google_table(data: list, range: str, index=0) -> None:
     # Задайте параметры таблицы
     SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1bA0qD8XAVMFqZt5pOlUqrG7_rBYQ-JVngcd0mxuncNo/edit?gid=1401527408#gid=1401527408"
-    SHEET_IDENTIFIER = 6  # Индекс листа (начинается с 0) или его имя (например, "Лист1")
+    SHEET_IDENTIFIER = "Карточки"  # Индекс листа (начинается с 0) или его имя (например, "Лист1")
     DATA_RANGE = range  # Пример:"A1:C2" Укажите диапазон или оставьте None для всего листа
 
     try:
