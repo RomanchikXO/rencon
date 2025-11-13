@@ -6,7 +6,6 @@ from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, 
                                 make_and_get_save_report, get_region_sales)
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.google_our_prices import get_products_and_prices
-from tasks.google_reviews import fetch_data__get_feedback
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
                                      upload_products_stat_to_google, upload_fin_report_to_google,
@@ -206,11 +205,3 @@ def get_orders_to_db():
     logger.info("🟢 Обновляем таблицу с заказами в бд")
     asyncio.run(get_orders())
     logger.info("Таблица с заказами в бд обновлена")
-
-
-@shared_task
-@with_task_context("otzivi")
-def get_otzivi():
-    logger.info("🟢 Получаем отзывы")
-    asyncio.run(fetch_data__get_feedback())
-    logger.info("✅ Отзывы получены")
