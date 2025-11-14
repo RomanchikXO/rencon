@@ -10,7 +10,7 @@ import logging
 from decorators import with_db_connection
 from google.functions import (update_google_sheet_data, fetch_google_sheet_data, gspread, SCOPES, Credentials,
                               CREDENTIALS_FILE, clear_list)
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fastapi_app.main import database
 
 
@@ -86,6 +86,25 @@ async def get_first_day_last_month() -> str:
     return date_from_str
 
 
+async def get_last_week_monday() -> str:
+    """
+    Получить понедельник прошлой недели
+    """
+    today = date.today()
+    monday = today - timedelta(days=today.weekday() + 7)
+    return monday.strftime("%Y-%m-%d")
+
+
+async def get_last_week_sunday() -> str:
+    """
+    Получить вскр прошлой недели
+    :return:
+    """
+    today = date.today()
+    sunday = today - timedelta(days=today.weekday() + 1)
+    return sunday.strftime("%Y-%m-%d")
+
+
 @with_db_connection
 async def upload_advconversion_to_google(mode):
     if mode == "Dima":
@@ -97,8 +116,6 @@ async def upload_advconversion_to_google(mode):
 
     sloi = await get_sloy()
 
-    date_from_str = await get_first_day_last_month()
-
     query_inns = select(
         wblk_table.c.inn,
         wblk_table.c.name
@@ -106,10 +123,20 @@ async def upload_advconversion_to_google(mode):
     rows = await database.fetch_all(query_inns)
     inns = {int(row["inn"]): row["name"] for row in rows}
 
-    payloads = [
-        ProductsStatRequest(inn=inn, date_from=date_from_str)
-        for inn, name in inns.items()
-    ]
+    if mode == "Dima":
+        date_from_str = await get_first_day_last_month()
+        payloads = [
+            ProductsStatRequest(inn=inn, date_from=date_from_str)
+            for inn, name in inns.items()
+        ]
+    elif mode == "Anna":
+        date_from_str = await get_last_week_monday()
+        date_to_str = await get_last_week_sunday()
+
+        payloads = [
+            ProductsStatRequest(inn=inn, date_from=date_from_str, date_to=date_to_str)
+            for inn, name in inns.items()
+        ]
 
     # Запускаем все запросы параллельно
     results_list = await asyncio.gather(
