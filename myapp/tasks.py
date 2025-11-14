@@ -187,10 +187,10 @@ def upload_fin_report_to_google_task(mode="Dima"):
 
 @shared_task
 @with_task_context("upload_save_data_to_google_task")
-def upload_save_data_to_google_task():
-    logger.info("🟢 Загрузка save_data в гугл табл")
-    asyncio.run(upload_save_data_to_google())
-    logger.info("Save_data в гугл табл ЗАГРУЖЕНО")
+def upload_save_data_to_google_task(mode="Dima"):
+    logger.info(f"🟢 Загрузка save_data в гугл табл. Mode: {mode}")
+    asyncio.run(upload_save_data_to_google(mode))
+    logger.info(f"Save_data в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @shared_task
 @with_task_context("upload_ostatki_to_google_task")
