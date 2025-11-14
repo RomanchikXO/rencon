@@ -202,6 +202,6 @@ def upload_ostatki_to_google_task():
 @shared_task
 @with_task_context("upload_advconversion_to_google_task")
 def upload_advconversion_to_google_task(mode="Dima"):
-    logger.info("🟢 Загрузка advconconversion в гугл табл")
+    logger.info(f"🟢 Загрузка advconconversion в гугл табл. Mode: {mode}")
     asyncio.run(upload_advconversion_to_google(mode))
     logger.info("Advconconversion в гугл табл ЗАГРУЖЕНО")
