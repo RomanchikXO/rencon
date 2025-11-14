@@ -164,10 +164,10 @@ def upload_advcost_to_google_task():
 
 @shared_task
 @with_task_context("upload_salesreport_to_google_task")
-def upload_salesreport_to_google_task():
-    logger.info("🟢 Загрузка salesreport в гугл табл")
-    asyncio.run(upload_salesreport_to_google())
-    logger.info("Salesreport в гугл табл ЗАГРУЖЕНО")
+def upload_salesreport_to_google_task(mode="Dima"):
+    logger.info(f"🟢 Загрузка salesreport в гугл табл. Mode: {mode}")
+    asyncio.run(upload_salesreport_to_google(mode))
+    logger.info(f"Salesreport в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @shared_task
 @with_task_context("upload_products_stat_to_google_task")

@@ -286,24 +286,36 @@ async def upload_advcost_to_google():
 
 
 @with_db_connection
-async def upload_salesreport_to_google():
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=240040532#gid=240040532"
-    name = "SalesReport"
+async def upload_salesreport_to_google(mode):
+    if mode == "Dima":
+        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=240040532#gid=240040532"
+    elif mode == "Anna":
+        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    name_list = "SalesReport"
 
     sloi = await get_sloy()
 
-    date_from_str = await get_first_day_last_month()
-
     query_inns = select(
-        wblk_table.c.inn
+        wblk_table.c.inn,
+        wblk_table.c.name
     )
     rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    inns = {int(row["inn"]): row["name"] for row in rows}
 
-    payloads = [
-        ProductsStatRequest(inn=inn, date_from=date_from_str)
-        for inn in inns
-    ]
+    if mode == "Dima":
+        date_from_str = await get_first_day_last_month()
+        payloads = [
+            ProductsStatRequest(inn=inn, date_from=date_from_str)
+            for inn, name in inns.items()
+        ]
+    elif mode == "Anna":
+        date_from_str = await get_last_week_monday()
+        date_to_str = await get_last_week_sunday()
+
+        payloads = [
+            ProductsStatRequest(inn=inn, date_from=date_from_str, date_to=date_to_str)
+            for inn, name in inns.items()
+        ]
 
     # Запускаем все запросы параллельно
     results_list = await asyncio.gather(
@@ -313,42 +325,74 @@ async def upload_salesreport_to_google():
     # Создаем словарь: ключ — inn, значение — результат
     results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
 
+    reform_data = {}
 
-    headers = ["inn", "vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
-    data = [headers]
-
-    try:
-        reform_data = [
-            [
-                inn,
-                stat["vendorcode"],
-                stat["rub"],
-                stat["sht"],
-                stat["nmid"],
-                stat["color"],
-                stat["date_wb"].strftime("%d.%m.%Y"),
-                sloi.get(stat["vendorcode"], "Слой не обнаружен")
+    if mode == "Dima":
+        headers = ["inn", "vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
+        try:
+            intermed_data = [
+                [
+                    inn,
+                    stat["vendorcode"],
+                    stat["rub"],
+                    stat["sht"],
+                    stat["nmid"],
+                    stat["color"],
+                    stat["date_wb"].strftime("%d.%m.%Y"),
+                    sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                ]
+                for inn, stats_list in results_by_inn.items()
+                for stat in stats_list
             ]
-            for inn, stats_list in results_by_inn.items()
-            for stat in stats_list
-        ]
-    except Exception as e:
-        logger.error(f"Ошибка обработки данных в upload_salesreport_to_google: {e}")
-        raise
 
-    data += reform_data
+            reform_data[""] = intermed_data
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_salesreport_to_google для {mode}: {e}")
+            raise
+    elif mode == "Anna":
+        headers = ["inn", "vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
+        try:
+            for inn, stats_list in results_by_inn.items():
+                intermed_data = [
+                    [
+                        stat["vendorcode"],
+                        stat["rub"],
+                        stat["sht"],
+                        stat["nmid"],
+                        stat["color"],
+                        stat["date_wb"].strftime("%d.%m.%Y"),
+                        sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                    ]
+                    for stat in stats_list
+                ]
 
-    try:
-        clear_list(url, name)
+                reform_data[inns.get(inn)] = intermed_data
 
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:H{len(data)}",
-            values=data
-        )
-    except Exception as e:
-        logger.error(f"Ошибка загрузки salesreport в таблицу: {e}")
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
+
+    for name, intermed_data in reform_data.items():
+        data = [headers]
+        data += intermed_data
+
+        letter = "H" if mode == "Dima" else "G"
+        name = name_list + name
+
+
+        try:
+            try:
+                clear_list(url, name)
+            except:
+                pass
+
+            update_google_sheet_data(
+                spreadsheet_url=url,
+                sheet_identifier=name,
+                data_range=f"A1:{letter}{len(data)}",
+                values=data
+            )
+        except Exception as e:
+            logger.error(f"Ошибка загрузки salesreport в таблицу для {mode}: {e}")
 
 @with_db_connection
 async def upload_ostatki_to_google(mode):
@@ -453,7 +497,7 @@ async def upload_ostatki_to_google(mode):
                 values=data
             )
         except Exception as e:
-            logger.error(f"Ошибка загрузки ostatki в таблицу: {e}")
+            logger.error(f"Ошибка загрузки ostatki в таблицу для {mode}: {e}")
 
 
 @with_db_connection
