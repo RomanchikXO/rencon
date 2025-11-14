@@ -351,21 +351,25 @@ async def upload_salesreport_to_google():
         logger.error(f"Ошибка загрузки salesreport в таблицу: {e}")
 
 @with_db_connection
-async def upload_ostatki_to_google():
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=177198408#gid=177198408"
-    name = "Ostatki"
+async def upload_ostatki_to_google(mode):
+    if mode == "Dima":
+        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=177198408#gid=177198408"
+    elif mode == "Anna":
+        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    name_list = "Ostatki"
 
     sloi = await get_sloy()
 
     query_inns = select(
-        wblk_table.c.inn
+        wblk_table.c.inn,
+        wblk_table.c.name
     )
     rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    inns = {int(row["inn"]): row["name"] for row in rows}
 
     payloads = [
         ProductsQuantRequest(inn=inn)
-        for inn in inns
+        for inn, name in inns.items()
     ]
 
     # Запускаем все запросы параллельно
@@ -375,46 +379,81 @@ async def upload_ostatki_to_google():
 
     # Создаем словарь: ключ — inn, значение — результат
     results_by_inn = {inn: result for inn, result in zip(inns, results_list)}
+    reform_data = {}
 
-    headers = [
-        "inn", "vendorcode", "nmid", "quantity", "inwaytoclient", "inwayfromclient", "warehouse", "size", "color", "Слой"
-    ]
-    data = [headers]
-
-    try:
-        reform_data = [
-            [
-                inn,
-                stat["vendorcode"],
-                stat["nmid"],
-                stat["quantity"],
-                stat["inwaytoclient"],
-                stat["inwayfromclient"],
-                stat["warehouse"],
-                stat["size"],
-                stat["color"],
-                sloi.get(stat["vendorcode"], "Слой не обнаружен")
-            ]
-            for inn, stats_list in results_by_inn.items()
-            for stat in stats_list
+    if mode == "Dima":
+        headers = [
+            "inn", "vendorcode", "nmid", "quantity", "inwaytoclient", "inwayfromclient", "warehouse", "size", "color", "Слой"
         ]
-    except Exception as e:
-        logger.error(f"Ошибка обработки данных в upload_ostatki_to_google: {e}")
-        raise
 
-    data += reform_data
+        try:
+            intermed_data = [
+                [
+                    inn,
+                    stat["vendorcode"],
+                    stat["nmid"],
+                    stat["quantity"],
+                    stat["inwaytoclient"],
+                    stat["inwayfromclient"],
+                    stat["warehouse"],
+                    stat["size"],
+                    stat["color"],
+                    sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                ]
+                for inn, stats_list in results_by_inn.items()
+                for stat in stats_list
+            ]
 
-    try:
-        clear_list(url, name)
+            reform_data[""] = intermed_data
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_ostatki_to_google для {mode}: {e}")
+            raise
+    elif mode == "Anna":
+        headers = ["vendorcode", "nmid", "quantity", "inwaytoclient", "inwayfromclient", "warehouse", "size", "color",
+                   "Слой"]
+        try:
+            for inn, stats_list in results_by_inn.items():
+                intermed_data = [
+                    [
+                        stat["vendorcode"],
+                        stat["nmid"],
+                        stat["quantity"],
+                        stat["inwaytoclient"],
+                        stat["inwayfromclient"],
+                        stat["warehouse"],
+                        stat["size"],
+                        stat["color"],
+                        sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                    ]
+                    for stat in stats_list
+                ]
 
-        update_google_sheet_data(
-            spreadsheet_url=url,
-            sheet_identifier=name,
-            data_range=f"A1:J{len(data)}",
-            values=data
-        )
-    except Exception as e:
-        logger.error(f"Ошибка загрузки ostatki в таблицу: {e}")
+                reform_data[inns.get(inn)] = intermed_data
+
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_ostatki_to_google для {mode}: {e}")
+
+    for name, intermed_data in reform_data.items():
+        data = [headers]
+        data += intermed_data
+
+        letter = "J" if mode == "Dima" else "I"
+        name = name_list + name
+
+        try:
+            try:
+                clear_list(url, name)
+            except:
+                pass
+
+            update_google_sheet_data(
+                spreadsheet_url=url,
+                sheet_identifier=name,
+                data_range=f"A1:{letter}{len(data)}",
+                values=data
+            )
+        except Exception as e:
+            logger.error(f"Ошибка загрузки ostatki в таблицу: {e}")
 
 
 @with_db_connection

@@ -194,14 +194,14 @@ def upload_save_data_to_google_task():
 
 @shared_task
 @with_task_context("upload_ostatki_to_google_task")
-def upload_ostatki_to_google_task():
-    logger.info("🟢 Загрузка ostatki в гугл табл")
-    asyncio.run(upload_ostatki_to_google())
-    logger.info("Ostatki в гугл табл ЗАГРУЖЕНО")
+def upload_ostatki_to_google_task(mode="Dima"):
+    logger.info(f"🟢 Загрузка ostatki в гугл табл. Mode: {mode}")
+    asyncio.run(upload_ostatki_to_google(mode))
+    logger.info(f"Ostatki в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @shared_task
 @with_task_context("upload_advconversion_to_google_task")
 def upload_advconversion_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка advconconversion в гугл табл. Mode: {mode}")
     asyncio.run(upload_advconversion_to_google(mode))
-    logger.info("Advconconversion в гугл табл ЗАГРУЖЕНО")
+    logger.info(f"Advconconversion в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
