@@ -1699,6 +1699,8 @@ async def make_and_get_save_report():
             async with aiohttp.ClientSession() as session:
                 try:
                     response = await wb_api(session, param)
+                    if not response:
+                        raise
                 except Exception as e:
                     await asyncio.sleep(60)
                     continue
