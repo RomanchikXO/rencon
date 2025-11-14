@@ -568,101 +568,172 @@ async def upload_products_stat_to_google():
 
 
 @with_db_connection
-async def upload_fin_report_to_google():
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1889074269#gid=1889074269"
-    name = "FinancialData"
+async def upload_fin_report_to_google(mode):
+    if mode == "Dima":
+        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1889074269#gid=1889074269"
+    elif mode == "Anna":
+        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    name_list = "FinancialData"
 
     sloi = await get_sloy()
 
-    date_from_str = await get_first_day_last_month()
-
-    query_inns = select(wblk_table.c.inn)
+    query_inns = select(
+        wblk_table.c.inn,
+        wblk_table.c.name
+    )
     rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    inns = {int(row["inn"]): row["name"] for row in rows}
 
-    payloads = [FinReportRequest(
-        inn=inn,
-        date_from=date_from_str,
-        supplier_oper_name=['возврат', 'добровольная компенсация при возврате',
-                            'компенсация скидки по программе лояльности', 'компенсация ущерба', 'коррекция логистики',
-                            'логистика', 'платная приемка', 'продажа', 'стоимость участия в программе лояльности',
-                            'сумма удержанная за начисленные баллы программы лояльности', 'удержание', 'штраф'])
-        for inn in inns]
+    if mode == "Dima":
+        date_from_str = await get_first_day_last_month()
+
+        payloads = [FinReportRequest(
+            inn=inn,
+            date_from=date_from_str,
+            supplier_oper_name=['возврат', 'добровольная компенсация при возврате',
+                                'компенсация скидки по программе лояльности', 'компенсация ущерба',
+                                'коррекция логистики',
+                                'логистика', 'платная приемка', 'продажа', 'стоимость участия в программе лояльности',
+                                'сумма удержанная за начисленные баллы программы лояльности', 'удержание', 'штраф'])
+            for inn, name in inns.items()]
+    elif mode == "Anna":
+        date_from_str = await get_last_week_monday()
+        date_to_str = await get_last_week_sunday()
+
+        payloads = [FinReportRequest(
+            inn=inn,
+            date_from=date_from_str,
+            date_to=date_to_str,
+            supplier_oper_name=['возврат', 'добровольная компенсация при возврате',
+                                'компенсация скидки по программе лояльности', 'компенсация ущерба',
+                                'коррекция логистики',
+                                'логистика', 'платная приемка', 'продажа', 'стоимость участия в программе лояльности',
+                                'сумма удержанная за начисленные баллы программы лояльности', 'удержание', 'штраф'])
+            for inn, name in inns.items()]
+
 
     # Запускаем все запросы параллельно
     results_list = await asyncio.gather(*[fin_report_endpoint(payload=payload, token=BEARER) for payload in payloads])
 
     # Создаем словарь: ключ — inn, значение — результат
     results_by_inn = {inn: result["data"] for inn, result in zip(inns, results_list)}
+    reform_data = {}
 
-    headers = [
-        "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "penalty", "date_wb",
-        "sale_dt", "color", "supplier_oper_name", "subjectname", "vendorcode", "Слой",
-        "Стоимость закупа", "Комиссия"
-    ]
-    data = [headers]
-
-    try:
-        reform_data = [
-            [
-                inn,
-                stat["nmid"],
-                stat["retail_price"],
-                stat["retail_amount"],
-                stat["ppvz_for_pay"],
-                stat["delivery_rub"],
-                stat["acceptance"],
-                stat.get("penalty", 0),
-                stat["date_wb"].strftime("%d.%m.%Y") if isinstance(stat["date_wb"], (date, datetime)) else stat["date_wb"],
-                stat["sale_dt"].strftime("%d.%m.%Y") if stat.get("sale_dt") and isinstance(stat["sale_dt"],
-                                                                                  (date, datetime)) else (
-                            stat.get("sale_dt") or ""),
-                stat["color"],
-                stat["supplier_oper_name"],
-                stat["subjectname"],
-                stat["vendorcode"],
-                sloi.get(stat["vendorcode"], "Слой не обнаружен"),
-                "",
-                stat["retail_amount"] - stat["ppvz_for_pay"]
-            ]
-            for inn, stats_list in results_by_inn.items()
-            for stat in stats_list if stat["supplier_oper_name"] not in ['', 'хранение']
+    if mode == "Dima":
+        headers = [
+            "inn", "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "penalty",
+            "date_wb",
+            "sale_dt", "color", "supplier_oper_name", "subjectname", "vendorcode", "Слой",
+            "Стоимость закупа", "Комиссия"
         ]
-    except Exception as e:
-        logger.error(f"Ошибка обработки данных в upload_fin_report_to_google: {e}")
-        raise
+        try:
+            intermed_data = [
+                [
+                    inn,
+                    stat["nmid"],
+                    stat["retail_price"],
+                    stat["retail_amount"],
+                    stat["ppvz_for_pay"],
+                    stat["delivery_rub"],
+                    stat["acceptance"],
+                    stat.get("penalty", 0),
+                    stat["date_wb"].strftime("%d.%m.%Y") if isinstance(stat["date_wb"], (date, datetime)) else stat[
+                        "date_wb"],
+                    stat["sale_dt"].strftime("%d.%m.%Y") if stat.get("sale_dt") and isinstance(stat["sale_dt"],
+                                                                                               (date, datetime)) else (
+                            stat.get("sale_dt") or ""),
+                    stat["color"],
+                    stat["supplier_oper_name"],
+                    stat["subjectname"],
+                    stat["vendorcode"],
+                    sloi.get(stat["vendorcode"], "Слой не обнаружен"),
+                    "",
+                    stat["retail_amount"] - stat["ppvz_for_pay"]
+                ]
+                for inn, stats_list in results_by_inn.items()
+                for stat in stats_list if stat["supplier_oper_name"] not in ['', 'хранение']
+            ]
 
-    data += reform_data
+            reform_data[""] = intermed_data
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_fin_report_to_google для {mode}: {e}")
+            raise
+    elif mode == "Anna":
+        headers = [
+            "nmid", "retail_price", "retail_amount", "ppvz_for_pay", "delivery_rub", "acceptance", "penalty",
+            "date_wb", "sale_dt", "color", "supplier_oper_name", "subjectname", "vendorcode", "Слой"
+        ]
 
-    BATCH_SIZE = 50000  # количество строк за один запрос
-    NUM_COLS = 17  # столбцы A-Q
-    def batch_update(sheet_name, data, as_user_input=False):
-        total_rows = len(data)
-        for start in range(0, total_rows, BATCH_SIZE):
-            end = min(start + BATCH_SIZE, total_rows)
-            batch = data[start:end]
-            range_str = f"A{start + 1}:Q{end}"
-            update_google_sheet_data(url, sheet_name, range_str, batch, as_user_input=as_user_input)
+        try:
+            for inn, stats_list in results_by_inn.items():
+                intermed_data = [
+                    [
+                        stat["nmid"],
+                        stat["retail_price"],
+                        stat["retail_amount"],
+                        stat["ppvz_for_pay"],
+                        stat["delivery_rub"],
+                        stat["acceptance"],
+                        stat.get("penalty", 0),
+                        stat["date_wb"].strftime("%d.%m.%Y") if isinstance(stat["date_wb"], (date, datetime)) else stat[
+                            "date_wb"],
+                        stat["sale_dt"].strftime("%d.%m.%Y") if stat.get("sale_dt") and isinstance(stat["sale_dt"],
+                                                                                                   (date,
+                                                                                                    datetime)) else (
+                                stat.get("sale_dt") or ""),
+                        stat["color"],
+                        stat["supplier_oper_name"],
+                        stat["subjectname"],
+                        stat["vendorcode"],
+                        sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                    ]
+                    for stat in stats_list
+                ]
 
-    try:
-        # 1️⃣ Перетираем старые данные батчами
-        clear_list(url, name)
+                reform_data[inns.get(inn)] = intermed_data
 
-        # 2️⃣ Загружаем новые данные батчами
-        batch_update(name, data, as_user_input=True)
+        except Exception as e:
+            logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
 
-        # 3️⃣ Вставляем формулу отдельно
-        sheet = gspread.authorize(
-            Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-        ).open_by_url(url).worksheet(name)
+    for name, intermed_data in reform_data.items():
+        data = [headers]
+        data += intermed_data
 
-        sheet.update_acell(
-            "P2",
-            """=ARRAYFORMULA(IF(N2:N="";"";IFERROR(VLOOKUP(N2:N;'Себес'!B:C;2;FALSE))))"""
-        )
+        letter = "Q" if mode == "Dima" else "N"
+        name = name_list + name
 
-    except Exception as e:
-        logger.error(f"Ошибка загрузки fin_report в таблицу: {e}")
+        BATCH_SIZE = 50000  # количество строк за один запрос
+        def batch_update(sheet_name, data, as_user_input=False):
+            total_rows = len(data)
+            for start in range(0, total_rows, BATCH_SIZE):
+                end = min(start + BATCH_SIZE, total_rows)
+                batch = data[start:end]
+                range_str = f"A{start + 1}:{letter}{end}"
+                update_google_sheet_data(url, sheet_name, range_str, batch, as_user_input=as_user_input)
+
+        try:
+            try:
+                # 1️⃣ Перетираем старые данные батчами
+                clear_list(url, name)
+            except:
+                pass
+
+            # 2️⃣ Загружаем новые данные батчами
+            batch_update(name, data, as_user_input=True)
+
+            # 3️⃣ Вставляем формулу отдельно
+            if mode == "Dima":
+                sheet = gspread.authorize(
+                    Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+                ).open_by_url(url).worksheet(name)
+
+                sheet.update_acell(
+                    "P2",
+                    """=ARRAYFORMULA(IF(N2:N="";"";IFERROR(VLOOKUP(N2:N;'Себес'!B:C;2;FALSE))))"""
+                )
+
+        except Exception as e:
+            logger.error(f"Ошибка загрузки fin_report в таблицу. Mode: {mode}: {e}")
 
 
 @with_db_connection
@@ -719,7 +790,6 @@ async def upload_save_data_to_google():
     data += reform_data
 
     BATCH_SIZE = 50000  # количество строк за один запрос
-    NUM_COLS = 9  # столбцы A-Q
     def batch_update(sheet_name, data, as_user_input=False):
         total_rows = len(data)
         for start in range(0, total_rows, BATCH_SIZE):
