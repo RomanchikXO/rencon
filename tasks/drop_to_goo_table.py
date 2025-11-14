@@ -350,7 +350,7 @@ async def upload_salesreport_to_google(mode):
             logger.error(f"Ошибка обработки данных в upload_salesreport_to_google для {mode}: {e}")
             raise
     elif mode == "Anna":
-        headers = ["inn", "vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
+        headers = ["vendorcode", "rub", "sht", "nmid", "color", "date_wb", "Слой"]
         try:
             for inn, stats_list in results_by_inn.items():
                 intermed_data = [
