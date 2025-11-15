@@ -149,12 +149,14 @@ async def upload_advconversion_to_google(mode):
     reform_data = {}
 
     if mode == "Dima":
-        headers = ["инн", "артикул продавца", "клики", "показы", "корзина", "заказ", "артикул wb", "дата", "цвет", "слой"]
+        headers = ["инн", "артикул продавца", "Тип РК", "клики", "показы", "корзина", "заказ", "артикул wb", "дата",
+                   "цвет", "слой"]
         try:
             intermed_data = [
                 [
                     inn,
                     stat["vendorcode"],
+                    stat["type_adv"],
                     stat["clicks"],
                     stat["views"],
                     stat["atbs"],
@@ -201,7 +203,7 @@ async def upload_advconversion_to_google(mode):
         data = [headers]
         data += intermed_data
 
-        letter = "J" if mode == "Dima" else "I"
+        letter = "K" if mode == "Dima" else "I"
         name = name_list + name
 
         try:
