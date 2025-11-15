@@ -1699,9 +1699,10 @@ async def make_and_get_save_report():
             async with aiohttp.ClientSession() as session:
                 try:
                     response = await wb_api(session, param)
-                    if not response:
+                    if not response or not response[0]["nmId"]:
                         raise
                 except Exception as e:
+                    logger.info(f"Повторяем через 60 сек")
                     await asyncio.sleep(60)
                     continue
                 try:
