@@ -169,7 +169,7 @@ async def upload_advconversion_to_google(mode):
                 for inn, stats_list in results_by_inn.items()
                 for stat in stats_list
             ]
-            logger.info(f"{intermed_data[0]}")
+            logger.info(f"{intermed_data[0]} и вторая {intermed_data[1]}")
             reform_data[""] = intermed_data
         except Exception as e:
             logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
