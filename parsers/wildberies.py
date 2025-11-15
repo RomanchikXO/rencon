@@ -1710,6 +1710,8 @@ async def make_and_get_save_report():
                     if not conn:
                         raise Exception(f"Ошибка подключения к БД в {cab['name']}")
 
+                    logger.info(f"Загружаем данные в БД. Длина массива: {len(response)}")
+
                     try:
                         data_for_upload = [
                             (
