@@ -32,6 +32,7 @@ nmids_table = metadata.tables.get("myapp_nmids")
 wblk_table = metadata.tables.get("myapp_wblk")
 stocks_table = metadata.tables.get("myapp_stocks")
 advstat_table = metadata.tables.get("myapp_advstat")
+advs_table = metadata.tables.get("myapp_adverts")
 findata_table = metadata.tables.get("myapp_findata")
 savedata_table = metadata.tables.get("myapp_savedata")
 sales_reg_table = metadata.tables.get("myapp_regionsales")
@@ -661,6 +662,7 @@ class AdvConversionResponse(BaseModel):
     atbs: int
     orders: int
     nmid: int = Field(..., description="Артикул WB")
+    type_adv: int = Field(..., description="Тип РК")
     date_wb: date_dt = Field(..., description="Дата отчёта (YYYY-MM-DD)")
     color: Optional[str] = Field(None, description="Цвет товара")
 
@@ -692,6 +694,7 @@ async def get_adv_conversion(
             select(
                 nmids_table.c.vendorcode,
                 advstat_table.c.nmid,
+                advs_table.c.type_adv,
                 advstat_table.c.clicks,
                 advstat_table.c.views,
                 advstat_table.c.atbs,
@@ -700,7 +703,9 @@ async def get_adv_conversion(
                 advstat_table.c.date_wb,
                 advstat_table.c.advert_id,
                 color_expr,
-            ).join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
+            )
+            .join(nmids_table, advstat_table.c.nmid == nmids_table.c.nmid)
+            .join(advs_table, advstat_table.c.advert_id == advs_table.c.advert_id, isouter=True)
             .where(nmids_table.c.lk_id == lk_id)
         )
 
@@ -725,6 +730,7 @@ async def get_adv_conversion(
             result.append(dict(
                 vendorcode=row["vendorcode"],
                 nmid=row["nmid"],
+                type_adv = row["type_adv"] or 0,
                 clicks=row["clicks"] or 0,
                 views=row["views"] or 0,
                 atbs=row["atbs"] or 0,
