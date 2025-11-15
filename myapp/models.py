@@ -234,15 +234,15 @@ class AdvStat(models.Model):
     app_type = models.IntegerField()
     nmid = models.IntegerField()
     orders = models.IntegerField()
-    atbs = models.IntegerField()
-    canceled = models.IntegerField()
+    atbs = models.IntegerField() # положили в корзину
+    canceled = models.IntegerField() # Отмены, шт.
     clicks = models.IntegerField()
     cpc = models.IntegerField()
     cr = models.IntegerField()
     ctr = models.IntegerField()
-    shks = models.IntegerField()
-    sum_cost = models.FloatField(default=0.0, null=True)
-    sum_price = models.IntegerField()
+    shks = models.IntegerField() # Количество заказанных товаров, шт.
+    sum_cost = models.FloatField(default=0.0, null=True) # Затраты, ₽
+    sum_price = models.IntegerField() # Сумма заказов, ₽
     views = models.IntegerField()
 
     class Meta:
