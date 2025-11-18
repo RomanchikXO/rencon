@@ -149,14 +149,13 @@ async def upload_advconversion_to_google(mode):
     reform_data = {}
 
     if mode == "Dima":
-        headers = ["инн", "артикул продавца", "Тип РК", "клики", "показы", "корзина", "заказ", "артикул wb", "дата",
-                   "цвет", "слой"]
+        headers = ["инн", "артикул продавца", "клики", "показы", "корзина", "заказ", "артикул wb", "дата",
+                   "цвет", "слой", "Тип РК",]
         try:
             intermed_data = [
                 [
                     inn,
                     stat["vendorcode"],
-                    stat["type_adv"],
                     stat["clicks"],
                     stat["views"],
                     stat["atbs"],
@@ -164,12 +163,13 @@ async def upload_advconversion_to_google(mode):
                     stat["nmid"],
                     stat["date_wb"].strftime("%d.%m.%Y"),
                     stat["color"],
-                    sloi.get(stat["vendorcode"], "Слой не обнаружен")
+                    sloi.get(stat["vendorcode"], "Слой не обнаружен"),
+                    stat["type_adv"],
                 ]
                 for inn, stats_list in results_by_inn.items()
                 for stat in stats_list
             ]
-            logger.info(f"{intermed_data[0]} и вторая {intermed_data[1]}")
+
             reform_data[""] = intermed_data
         except Exception as e:
             logger.error(f"Ошибка обработки данных в upload_advconversion_to_google для {mode}: {e}")
