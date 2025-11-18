@@ -118,6 +118,7 @@ services:
 
   worker:
     build: .
+    working_dir: /app
     volumes:
       - .:/app
       - /etc/localtime:/etc/localtime:ro
@@ -132,6 +133,7 @@ services:
 
   beat:
     build: .
+    working_dir: /app
     volumes:
       - .:/app
       - /etc/localtime:/etc/localtime:ro
@@ -139,7 +141,14 @@ services:
     restart: always
     depends_on:
       - redis
-    command: ["celery", "-A", "django_app.celery_config", "beat", "--loglevel=info", "--pidfile=", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+    command: [
+      "celery",
+      "-A", "django_app.celery_config",
+      "beat",
+      "--loglevel=info",
+      "--pidfile=",
+      "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"
+    ]
 
   flower:
     image: mher/flower:2.0.0
