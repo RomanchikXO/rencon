@@ -1563,6 +1563,7 @@ async def get_advs():
                         "changeTime" = EXCLUDED."changeTime";
                 """
                 await conn.executemany(query, data_for_upload)
+                logger.info(f"Данные обновлены для кабинета {cab['name']}")
             except Exception as e:
                 raise Exception(f"Ошибка обновления данных в myapp_adverts. Error: {e}")
         except Exception as e:
