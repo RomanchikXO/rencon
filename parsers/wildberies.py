@@ -1566,7 +1566,7 @@ async def get_advs():
             except Exception as e:
                 raise Exception(f"Ошибка обновления данных в myapp_adverts. Error: {e}")
         except Exception as e:
-            logger.error(f"Ошибка в get_advs_for_inn: {e}")
+            logger.error(f"Ошибка в get_advs_for_inn: {e} для {cab['name']}")
         finally:
             await conn.close()
 
@@ -1575,7 +1575,7 @@ async def get_advs():
             return await get_advs_for_inn(cab)
 
     tasks = [get_advs_limited(cab) for cab in cabinets]
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def get_fin_report():
