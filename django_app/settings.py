@@ -67,6 +67,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'django_app.urls'
 CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_TIMEZONE = 'Europe/Moscow'
+CELERY_ENABLE_UTC = False
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 
 
@@ -127,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
