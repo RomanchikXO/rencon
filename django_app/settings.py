@@ -67,8 +67,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'django_app.urls'
 CELERY_BROKER_URL = 'redis://redis:6379/0'
-CELERY_TIMEZONE = 'Europe/Moscow'
 CELERY_ENABLE_UTC = False
+CELERY_TIMEZONE = 'Europe/Moscow'
+
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 
 
@@ -133,7 +134,7 @@ TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
