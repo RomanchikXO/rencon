@@ -7,7 +7,9 @@ import os
 
 logger = ContextLogger(logging.getLogger("bot"))
 
-DEBUG = os.environ.get('DEBUG', True)
+DEBUG = os.environ.get("DEBUG", "1")
+
+DEBUG = DEBUG.lower() in ("1", "true", "yes")
 
 if __name__ == "__main__":
     if not DEBUG:
