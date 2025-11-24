@@ -1,4 +1,15 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+
+class User(AbstractUser):
+    tg_id = models.BigIntegerField(default=0, null=True, blank=True)
+    tg_status = models.CharField(default=0, null=True, blank=True, max_length=255)
+    is_manager = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.username
 
 
 # Модаль для хранения данных о скорости доставки со складов в ообласти

@@ -1,8 +1,9 @@
 from django.contrib import admin
 from .models import (WbLk, Price, CeleryLog, nmids, Stocks, Orders,
                      ProductsStat, Supplies, Betweenwarhouses, AreaWarehouses, AdvStat, Adverts,
-                     FinData, SaveData, RegionSales, MySklad)
+                     FinData, SaveData, RegionSales, MySklad, User)
 
+admin.site.register(User)
 
 class AdvertsAdmin(admin.ModelAdmin):
     list_display = ('advert_id', 'type_adv', 'status')
