@@ -8,8 +8,11 @@ import logging
 from context_logger import ContextLogger
 from bot.states import set_status, get_status
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+import os
+
 logger = ContextLogger(logging.getLogger("cookie_updater"))
 
+os.makedirs('/app/logs', exist_ok=True)
 
 def ask_user_for_input(user_id):
     bot.send_message(user_id, "Введите код из SMS:")
@@ -59,9 +62,9 @@ async def login_and_get_context(page=None, context=None):
     except Exception as e:
         logger.error(f"Ошибка при ожидании поля ввода номера: {e}")
         html_content = await page.content()
-        with open('error_page.html', 'w', encoding='utf-8') as f:
+        with open('/app/logs/error_page.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
-        await page.screenshot(path='error_screenshot.png')
+        await page.screenshot(path='/app/logs/error_screenshot.png', full_page=True)
         raise
 
     # Введём номер (формат: 9999999999)
