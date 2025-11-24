@@ -1,14 +1,17 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
 
 
-class User(AbstractUser):
+class tg_user(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tg_profile")
     tg_id = models.BigIntegerField(default=0, null=True, blank=True)
     tg_status = models.CharField(default=0, null=True, blank=True, max_length=255)
-    is_manager = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = "ТГ юзеры"
 
     def __str__(self):
-        return self.username
+        return f"{self.user.username} ({self.tg_id})"
 
 
 # Модаль для хранения данных о скорости доставки со складов в ообласти
