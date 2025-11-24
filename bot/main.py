@@ -3,9 +3,11 @@ import handlers  # noqa
 from utils.set_bot_commands import set_default_commands
 import logging
 from context_logger import ContextLogger
+import os
 
 logger = ContextLogger(logging.getLogger("bot"))
-from loader import DEBUG
+
+DEBUG = os.environ.get('DEBUG', True)
 
 if __name__ == "__main__":
     if not DEBUG:
