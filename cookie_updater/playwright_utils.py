@@ -30,7 +30,7 @@ async def login_and_get_context(page=None, context=None):
     try:
         await page.wait_for_selector('input[data-testid="phone-input"]')
     except Exception as e:
-        logger.error(f"Ошибка при ожидании поля ввода номера: {e}")
+        logger.error(f"{time.time()} Ошибка при ожидании поля ввода номера: {e}")
         html_content = await page.content()
         with open('/app/logs/error_page.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -220,8 +220,7 @@ async def get_and_store_cookies(page=None):
             return
         try:
             request = ("SELECT id, inn "
-                       "FROM myapp_wblk "
-                       "WHERE groups_id = 1")
+                       "FROM myapp_wblk")
             all_fields = await conn.fetch(request)
             inns = [{ "id": row["id"], "inn": row["inn"] } for row in all_fields]
         except Exception as e:
@@ -300,4 +299,4 @@ async def get_and_store_cookies(page=None):
             await browser.close()
         except:
             pass
-        await get_and_store_cookies(page)
+        await get_and_store_cookies()
