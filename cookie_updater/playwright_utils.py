@@ -1,56 +1,59 @@
 import asyncio
 import time
 
-from BOT.loader_bot import bot
+from bot.loader_bot import bot
 from playwright.async_api import async_playwright
-from database.DataBase import async_connect_to_database
+from ..database.DataBase import async_connect_to_database
 import logging
 from context_logger import ContextLogger
-from BOT.states import set_status, get_status
+from bot.states import set_status, get_status
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 logger = ContextLogger(logging.getLogger("cookie_updater"))
 
 
-proxy_host='45.13.192.129'
-proxy_user='31806a1a'
-proxy_pass='6846a6171a'
-proxy_port='30018'
-proxy_url = f"http://{proxy_host}:{proxy_port}"
-
-
 def ask_user_for_input(user_id):
-    msg = bot.send_message(user_id, "Введите код из SMS:")
+    bot.send_message(user_id, "Введите код из SMS:")
     set_status("get_sms_code", user_id)
 
 
 
-async def login_and_get_context():
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(
-        proxy={
-            "server": proxy_url,
-            "username": proxy_user,
-            "password": proxy_pass,
-        },
-        headless=True,
-        args=[
-            "--no-sandbox",
-            "--disable-software-rasterizer",
-            "--start-maximized",
-            "--disable-blink-features=AutomationControlled",
-            "--disable-extensions",
-            "--disable-gpu",
-        ]
-    )
-    context = await browser.new_context(
-            timezone_id="Europe/Moscow",  # Устанавливаем часовой пояс на Москву
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",  # Стандартный пользовательский агент
-            locale="ru-RU",  # Устанавливаем локаль
-            geolocation={"latitude": 55.7558, "longitude": 37.6173},  # Геолокация Москвы
-            permissions=["geolocation"],  # Разрешаем использование геолокации
-        )
-    page = await context.new_page()
+async def login_and_get_context(page=None, context=None):
+    """
+        Функция авторизации.
+        Если page=None - создает новый браузер и сохраняет состояние
+        Если page передан - использует существующий контекст
+        """
+    created_here = False
 
-    await page.goto("https://seller-auth.wildberries.ru/ru/?redirect_url=https%3A%2F%2Fseller.wildberries.ru%2F&fromSellerLanding")
+    if not page:
+        created_here = True
+        playwright = await async_playwright().start()
+        browser = await playwright.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-software-rasterizer",
+                "--start-maximized",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-extensions",
+                "--disable-gpu",
+            ]
+        )
+        context = await browser.new_context(
+                timezone_id="Europe/Moscow",  # Устанавливаем часовой пояс на Москву
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",  # Стандартный пользовательский агент
+                locale="ru-RU",  # Устанавливаем локаль
+                geolocation={"latitude": 55.7558, "longitude": 37.6173},  # Геолокация Москвы
+                permissions=["geolocation"],  # Разрешаем использование геолокации
+            )
+        page = await context.new_page()
+
+        await page.goto("https://seller-auth.wildberries.ru/ru/?redirect_url=https%3A%2F%2Fseller.wildberries.ru%2F&fromSellerLanding")
+    else:
+        # Если страница была передана, получаем context
+        if not context:
+            context = page.context
+
     await page.wait_for_selector('input[data-testid="phone-input"]')
 
     # Введём номер (формат: 9999999999)
@@ -67,6 +70,7 @@ async def login_and_get_context():
         result = result[0]
     except Exception as e:
         logger.error(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
+        raise
     finally:
         await conn.close()
 
@@ -94,95 +98,237 @@ async def login_and_get_context():
         logger.error(f"Ошибка при вставке смс. Код из смс: {sms_code}. Ошибка: {e}")
         raise
 
+    # сохраняем состояние
+    await asyncio.sleep(20)
+    await context.storage_state(path="auth_state.json")
 
-    # Убеждаемся, что авторизация прошла и редирект на seller.wildberries.ru
-    await page.wait_for_url("https://seller.wildberries.ru/**", timeout=60000)
-    return page
+    if created_here:
+        await browser.close()
+        await playwright.stop()
+
+    return context
 
 
-async def get_and_store_cookies(page):
+async def close_any_popup(page):
+    """Закрывает всплывающие окна"""
 
-    try:
-        await page.wait_for_load_state("networkidle")
-    except:
-        time.sleep(10)
-    try:
-        close_button = page.locator('button[class*="s__EAAx6f2l1v"]')
-        await close_button.wait_for(state="visible", timeout=10000)
-        await close_button.click(timeout=5000)
-    except Exception as e:
-        logger.error(f"❌ Кнопка не нажалась: {e}")
+    # Вариант 1: Специфичные селекторы для кнопок закрытия
+    candidates = [
+        # Кнопки с крестиком внутри модальных окон/drawer
+        "[class*='Drawer'] [class*='clear-icon'] button",
+        "[class*='Drawer'] [class*='close'] button",
+        "[class*='modal'] [class*='clear-icon'] button",
+        "[class*='modal'] [class*='close'] button",
+        "[class*='Informer'] [class*='clear-icon'] button",
 
-    await page.hover("button:has-text('Pear Home')")
-    await page.wait_for_selector("li.suppliers-list_SuppliersList__item__GPkdU", timeout=10000)
+        # Help Center drawer специфично
+        "[class*='Help-center-drawer'] button:has(svg path[d*='22.7782'])",
 
-    cookies_need = [
-        "wbx-validation-key",
-        "_wbauid",
-        "x-supplier-id-external",
+        # Общие паттерны для кнопок закрытия
+        "[class*='clear-icon'] button:has(svg)",
+        "[class*='close-icon'] button:has(svg)",
+
+        # Кнопки с текстом
+        "button:has-text('×')",
+        "button:has-text('✕')",
+        "button:has-text('Закрыть')",
+
+        # По роли
+        "[role=dialog] button:has(svg path[clip-rule='evenodd'])",
+
+        # Круглые кнопки-иконки (обычно для закрытия)
+        # "button[class*='circle']:has(svg path[clip-rule='evenodd'])",
+        # "button[class*='onlyIcon']:has(svg path[clip-rule='evenodd'])",
     ]
 
-    conn = await async_connect_to_database()
-    if not conn:
-        logger.warning(f"Ошибка подключения к БД в login_and_get_context")
-        return
+    for selector in candidates:
+        try:
+            count = await page.locator(selector).count()
+            if count > 0:
+                await page.locator(selector).first.click(timeout=500)
+                print(f"✅ Закрыто через: {selector}")
+                return True
+        except:
+            pass
+
+    return False
+
+
+async def get_and_store_cookies(page=None):
+    """Основная функция получения и сохранения cookies"""
+
+    if not page:
+        playwright = await async_playwright().start()
+        browser = await playwright.chromium.launch(
+            headless=False,
+            args=[
+                "--no-sandbox",
+                "--disable-software-rasterizer",
+                "--start-maximized",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-extensions",
+                "--disable-gpu",
+            ]
+        )
+
+
+    # try:
+    #     await page.wait_for_load_state("networkidle")
+    # except:
+    #     time.sleep(10)
+    # try:
+    #     close_button = page.locator('button[class*="s__EAAx6f2l1v"]')
+    #     await close_button.wait_for(state="visible", timeout=10000)
+    #     await close_button.click(timeout=5000)
+    # except Exception as e:
+    #     logger.error(f"❌ Кнопка не нажалась: {e}")
+
     try:
-        request = ("SELECT id, inn "
-                   "FROM myapp_wblk")
-        all_fields = await conn.fetch(request)
-        inns = [{ "id": row["id"], "inn": row["inn"] } for row in all_fields]
-    except Exception as e:
-        logger.error(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
-    finally:
-        await conn.close()
-    for index, inn in enumerate(inns): # тут inns это массив с инн с БД
-        authorizev3 = None
-        async def log_request(request):
-            nonlocal authorizev3
-            if "/banner-homepage/suppliers-home-page/api/v2/banners" in request.url and "authorizev3" in request.headers:
-                authorizev3 = request.headers["authorizev3"]
+        # Пытаемся загрузить сохраненное состояние
+        if not page:
+            context = await browser.new_context(storage_state="auth_state.json")
+            page = await context.new_page()
+            await page.goto("https://seller.wildberries.ru/")
 
-        page.on("request", log_request)
-
-        target_text = f"ИНН {inn['inn']}"
-
-        if index == 0:
-            supplier_radio_label = page.locator(
-                f"li.suppliers-list_SuppliersList__item__GPkdU:has-text('{target_text}') label[data-testid='supplier-checkbox-checkbox']"
+        # Проверяем, нужна ли авторизация
+        try:
+            button = await page.wait_for_selector(
+                'button:has-text("Войти")',
+                timeout=10000
             )
-        else:
-            await page.wait_for_selector("button:has-text('Pear Home')", timeout=10000)
-            await page.hover("button:has-text('Pear Home')")
-            await page.wait_for_selector("li.suppliers-list_SuppliersList__item__GPkdU", timeout=10000)
-            supplier_radio_label = page.locator(
-                f"li.suppliers-list_SuppliersList__item__GPkdU:has-text('{target_text}') label[data-testid='supplier-checkbox-checkbox']"
-            )
+            if button:
+                await button.click()
+                await page.wait_for_load_state("load")
+                # Передаем page И context для сохранения состояния
+                await login_and_get_context(page, context)
+                # После авторизации возвращаемся на главную
+                await page.goto("https://seller.wildberries.ru/")
+                await page.wait_for_load_state("load")
+        except:
+            # Кнопки "Войти" нет - значит уже авторизованы
+            pass
 
-        await supplier_radio_label.wait_for(state="visible", timeout=5000)
-        await supplier_radio_label.click()
+    except FileNotFoundError:
+        # Файла auth_state.json нет - создаем с нуля
+        context = await browser.new_context(
+            timezone_id="Europe/Moscow",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            locale="ru-RU",
+            geolocation={"latitude": 55.7558, "longitude": 37.6173},
+            permissions=["geolocation"],
+        )
+        page = await context.new_page()
+        await login_and_get_context(page, context)
+        await page.goto("https://seller.wildberries.ru/")
+        await page.wait_for_load_state("load")
 
-        await asyncio.sleep(5)
-        cookies = await page.context.cookies()
-        cookies_str = ";".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies if cookie.get("name", "") in cookies_need)
+    # Закрываем всплывающие окна
+    try:
+        page.on("dialog", lambda dialog: dialog.dismiss())
+        await close_any_popup(page)
+
+        popup = page.locator("xpath=//*[number(translate(@style,'^0-9',''))>1000]")
+        await popup.locator("button, div, span").first.click()
+    except:
+        pass
+
+    # Основная логика работы с cookies
+    # Кликаем по кнопке для открытия списка поставщиков
+    try:
+        chips_button = page.locator('button[data-testid="desktop-profile-select-button-chips-component"]')
+        await chips_button.wait_for(state="visible", timeout=10000)
+        await chips_button.hover()
+        await asyncio.sleep(0.5)  # Небольшая задержка для открытия выпадающего списка
+
+        cookies_need = [
+            "wbx-validation-key",
+            "_wbauid",
+            "x-supplier-id-external",
+        ]
 
         conn = await async_connect_to_database()
         if not conn:
-            logger.warning("Ошибка подключения к БД в get_and_store_cookies")
+            logger.warning(f"Ошибка подключения к БД в login_and_get_context")
             return
         try:
-            query = """
-                    UPDATE myapp_wblk 
-                    SET
-                        cookie = $1,
-                        authorizev3 = $2
-                    WHERE id = $3
-                """
-            await conn.execute(query, cookies_str, authorizev3, inn["id"])
+            request = ("SELECT id, inn "
+                       "FROM myapp_wblk "
+                       "WHERE groups_id = 1")
+            all_fields = await conn.fetch(request)
+            inns = [{ "id": row["id"], "inn": row["inn"] } for row in all_fields]
         except Exception as e:
-            logger.error(f"Ошибка обновления кукков в лк. Error: {e}")
+            raise Exception(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
         finally:
             await conn.close()
-    await asyncio.sleep(300)
-    await page.reload()
-    await get_and_store_cookies(page)
 
+        current_handler = None
+
+        for index, inn in enumerate(inns): # тут inns это массив с инн с БД
+            authorizev3 = None
+
+            # Удаляем старый обработчик
+            if current_handler:
+                page.remove_listener("request", current_handler)
+
+            async def log_request(request):
+                nonlocal authorizev3
+                if "authorizev3" in request.headers:
+                    authorizev3 = request.headers["authorizev3"]
+
+            current_handler = log_request
+            page.on("request", current_handler)
+
+            target_text = f"ИНН {inn['inn']}"
+
+            if index > 0:
+                # если элемент не первый то раскрываем выбор ЛК
+                await chips_button.wait_for(state="visible", timeout=5000)
+                await chips_button.hover()
+                await asyncio.sleep(0.5)
+
+            supplier_radio_label = page.locator(
+                f"li.suppliers-list_SuppliersList__item__GPkdU:has-text('{target_text}') label[data-testid='supplier-checkbox-checkbox']"
+            )
+
+            try:
+                await supplier_radio_label.wait_for(state="visible", timeout=5000)
+                await asyncio.sleep(5)
+                await supplier_radio_label.click()
+            except PlaywrightTimeoutError:
+                logger.warning(f"Элемент поставщика '{target_text}' не найден или не появился вовремя")
+                continue
+
+            await asyncio.sleep(3)
+            await close_any_popup(page)
+
+            cookies = await page.context.cookies()
+            cookies_str = ";".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies if cookie.get("name", "") in cookies_need)
+
+            conn = await async_connect_to_database()
+            if not conn:
+                logger.warning("Ошибка подключения к БД в get_and_store_cookies")
+                return
+            try:
+                query = """
+                        UPDATE myapp_wblk
+                        SET
+                            cookie = $1,
+                            authorizev3 = $2
+                        WHERE id = $3
+                    """
+                await conn.execute(query, cookies_str, authorizev3, inn["id"])
+            except Exception as e:
+                raise Exception(f"Ошибка обновления кукков в лк. Error: {e}")
+            finally:
+                await conn.close()
+            await asyncio.sleep(300)
+            await page.reload()
+            await get_and_store_cookies(page)
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        try:
+            await browser.close()
+        except:
+            pass
+        await get_and_store_cookies(page)
