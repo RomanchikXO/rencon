@@ -292,7 +292,7 @@ async def get_and_store_cookies(page=None):
             await page.reload()
             await get_and_store_cookies(page)
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"{time.time()} Ошибка: {e}")
         pass
     finally:
         try:
