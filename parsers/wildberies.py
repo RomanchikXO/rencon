@@ -1257,26 +1257,26 @@ async def get_stat_products():
             "start": (datetime.now() - timedelta(days=15)).strftime('%Y-%m-%d'),
             "end": (datetime.now() - timedelta(days=8)).strftime('%Y-%m-%d')
         },
-        {
-            "start": (datetime.now() - timedelta(days=23)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=16)).strftime('%Y-%m-%d')
-        },
-        {
-            "start": (datetime.now() - timedelta(days=31)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=24)).strftime('%Y-%m-%d')
-        },
-        {
-            "start": (datetime.now() - timedelta(days=39)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=32)).strftime('%Y-%m-%d')
-        },
-        {
-            "start": (datetime.now() - timedelta(days=47)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d')
-        },
-        {
-            "start": (datetime.now() - timedelta(days=55)).strftime('%Y-%m-%d'),
-            "end": (datetime.now() - timedelta(days=48)).strftime('%Y-%m-%d')
-        }
+        # {
+        #     "start": (datetime.now() - timedelta(days=23)).strftime('%Y-%m-%d'),
+        #     "end": (datetime.now() - timedelta(days=16)).strftime('%Y-%m-%d')
+        # },
+        # {
+        #     "start": (datetime.now() - timedelta(days=31)).strftime('%Y-%m-%d'),
+        #     "end": (datetime.now() - timedelta(days=24)).strftime('%Y-%m-%d')
+        # },
+        # {
+        #     "start": (datetime.now() - timedelta(days=39)).strftime('%Y-%m-%d'),
+        #     "end": (datetime.now() - timedelta(days=32)).strftime('%Y-%m-%d')
+        # },
+        # {
+        #     "start": (datetime.now() - timedelta(days=47)).strftime('%Y-%m-%d'),
+        #     "end": (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d')
+        # },
+        # {
+        #     "start": (datetime.now() - timedelta(days=55)).strftime('%Y-%m-%d'),
+        #     "end": (datetime.now() - timedelta(days=48)).strftime('%Y-%m-%d')
+        # }
     ]
     for index, period in enumerate(periods):
         tasks = [get_analitics(cab, period) for cab in cabinets]
