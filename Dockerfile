@@ -2,17 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-
 # Копируем зависимости и устанавливаем их
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Устанавливаем таймзону на уровне контейнера
 RUN ln -snf /usr/share/zoneinfo/Europe/Moscow /etc/localtime && echo "Europe/Moscow" > /etc/timezone
-
-
-RUN playwright install
-
 
 # Копируем весь код проекта
 COPY . .

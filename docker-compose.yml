@@ -41,11 +41,12 @@ services:
       PYTHONPATH: /app
 
   playwright_cookie_updater:
-    build: .
+    build:
+      context: .
+      dockerfile: cookie_updater/Dockerfile
     container_name: playwright_cookie_updater
     depends_on:
       - db
-    command: [ "python", "cookie_updater/main.py" ]
     volumes:
       - .:/app
     environment:
