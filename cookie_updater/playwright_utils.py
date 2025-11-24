@@ -3,7 +3,7 @@ import time
 
 from bot.loader_bot import bot
 from playwright.async_api import async_playwright
-from ..database.DataBase import async_connect_to_database
+from database.DataBase import async_connect_to_database
 import logging
 from context_logger import ContextLogger
 from bot.states import set_status, get_status
