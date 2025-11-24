@@ -26,36 +26,6 @@ async def login_and_get_context(page=None, context=None):
         Если page=None - создает новый браузер и сохраняет состояние
         Если page передан - использует существующий контекст
         """
-    created_here = False
-
-    if not page:
-        created_here = True
-        playwright = await async_playwright().start()
-        browser = await playwright.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-software-rasterizer",
-                "--start-maximized",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--disable-gpu",
-            ]
-        )
-        context = await browser.new_context(
-                timezone_id="Europe/Moscow",  # Устанавливаем часовой пояс на Москву
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",  # Стандартный пользовательский агент
-                locale="ru-RU",  # Устанавливаем локаль
-                geolocation={"latitude": 55.7558, "longitude": 37.6173},  # Геолокация Москвы
-                permissions=["geolocation"],  # Разрешаем использование геолокации
-            )
-        page = await context.new_page()
-
-        await page.goto("https://seller-auth.wildberries.ru/ru/?redirect_url=https%3A%2F%2Fseller.wildberries.ru%2F&fromSellerLanding")
-    else:
-        # Если страница была передана, получаем context
-        if not context:
-            context = page.context
 
     try:
         await page.wait_for_selector('input[data-testid="phone-input"]')
@@ -113,9 +83,10 @@ async def login_and_get_context(page=None, context=None):
     await asyncio.sleep(20)
     await context.storage_state(path="auth_state.json")
 
-    if created_here:
-        await browser.close()
-        await playwright.stop()
+    # не раскомичиваем
+    # if created_here:
+    #     await browser.close()
+    #     await playwright.stop()
 
     return context
 
@@ -182,42 +153,12 @@ async def get_and_store_cookies(page=None):
             ]
         )
 
-
-    # try:
-    #     await page.wait_for_load_state("networkidle")
-    # except:
-    #     time.sleep(10)
-    # try:
-    #     close_button = page.locator('button[class*="s__EAAx6f2l1v"]')
-    #     await close_button.wait_for(state="visible", timeout=10000)
-    #     await close_button.click(timeout=5000)
-    # except Exception as e:
-    #     logger.error(f"❌ Кнопка не нажалась: {e}")
-
     try:
         # Пытаемся загрузить сохраненное состояние
         if not page:
             context = await browser.new_context(storage_state="auth_state.json")
             page = await context.new_page()
             await page.goto("https://seller.wildberries.ru/")
-
-        # Проверяем, нужна ли авторизация
-        try:
-            button = await page.wait_for_selector(
-                'button:has-text("Войти")',
-                timeout=10000
-            )
-            if button:
-                await button.click()
-                await page.wait_for_load_state("load")
-                # Передаем page И context для сохранения состояния
-                await login_and_get_context(page, context)
-                # После авторизации возвращаемся на главную
-                await page.goto("https://seller.wildberries.ru/")
-                await page.wait_for_load_state("load")
-        except:
-            # Кнопки "Войти" нет - значит уже авторизованы
-            pass
 
     except FileNotFoundError:
         # Файла auth_state.json нет - создаем с нуля
@@ -229,9 +170,25 @@ async def get_and_store_cookies(page=None):
             permissions=["geolocation"],
         )
         page = await context.new_page()
-        await login_and_get_context(page, context)
         await page.goto("https://seller.wildberries.ru/")
-        await page.wait_for_load_state("load")
+
+    # Проверяем, нужна ли авторизация
+    try:
+        button = await page.wait_for_selector(
+            'button:has-text("Войти")',
+            timeout=10000
+        )
+        if button:
+            await button.click()
+            await page.wait_for_load_state("load")
+            # Передаем page И context для сохранения состояния
+            await login_and_get_context(page, context)
+            # После авторизации возвращаемся на главную
+            await page.goto("https://seller.wildberries.ru/")
+            await page.wait_for_load_state("load")
+    except:
+        # Кнопки "Войти" нет - значит уже авторизованы
+        pass
 
     # Закрываем всплывающие окна
     try:
@@ -337,6 +294,7 @@ async def get_and_store_cookies(page=None):
             await get_and_store_cookies(page)
     except Exception as e:
         logger.error(f"Ошибка: {e}")
+        pass
     finally:
         try:
             await browser.close()
