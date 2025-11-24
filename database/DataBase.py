@@ -1,6 +1,10 @@
 import psycopg2
 import asyncpg
-from loader import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+import os
+
+POSTGRES_DB = os.environ.get('POSTGRES_DB')
+POSTGRES_USER = os.environ.get('POSTGRES_USER')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
 
 import logging
 from context_logger import ContextLogger
