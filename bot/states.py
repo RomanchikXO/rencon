@@ -5,7 +5,7 @@ from context_logger import ContextLogger
 logger = ContextLogger(logging.getLogger("bot"))
 
 def get_status(tg_id: int) -> str:
-    query = "SELECT tg_status from myapp_user where tg_id = %s"
+    query = "SELECT tg_status from myapp_tguser where tg_id = %s"
     status = ""
     conn = connect_to_database()
     try:
@@ -23,7 +23,7 @@ def get_status(tg_id: int) -> str:
 
 
 def set_status(status: str, tg_id: int):
-    query = "UPDATE myapp_user SET tg_status = %s where tg_id = %s"
+    query = "UPDATE myapp_tguser SET tg_status = %s where tg_id = %s"
     conn = connect_to_database()
     try:
         with conn.cursor() as cursor:

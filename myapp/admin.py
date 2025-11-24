@@ -1,9 +1,13 @@
 from django.contrib import admin
 from .models import (WbLk, Price, CeleryLog, nmids, Stocks, Orders,
                      ProductsStat, Supplies, Betweenwarhouses, AreaWarehouses, AdvStat, Adverts,
-                     FinData, SaveData, RegionSales, MySklad, User)
+                     FinData, SaveData, RegionSales, MySklad, TgUser)
 
-admin.site.register(User)
+class TgUserAdmin(admin.ModelAdmin):
+    list_display = ('user', 'tg_id', 'tg_status')
+    search_fields = ('user__username', 'tg_id', 'tg_status')
+    list_filter = ('tg_status',)
+
 
 class AdvertsAdmin(admin.ModelAdmin):
     list_display = ('advert_id', 'type_adv', 'status')
@@ -123,3 +127,4 @@ admin.site.register(Betweenwarhouses, BetweenwarhousesAdmin)
 admin.site.register(AreaWarehouses, AreaWarehousesAdmin)
 admin.site.register(AdvStat, AdvStatAdmin)
 admin.site.register(Adverts, AdvertsAdmin)
+admin.site.register(TgUser, TgUserAdmin)

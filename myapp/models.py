@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-class tg_user(models.Model):
+class TgUser(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tg_profile")
     tg_id = models.BigIntegerField(default=0, null=True, blank=True)
     tg_status = models.CharField(default=0, null=True, blank=True, max_length=255)
