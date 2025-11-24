@@ -160,7 +160,7 @@ async def get_and_store_cookies(page=None):
     if not page:
         playwright = await async_playwright().start()
         browser = await playwright.chromium.launch(
-            headless=False,
+            headless=True,
             args=[
                 "--no-sandbox",
                 "--disable-software-rasterizer",
