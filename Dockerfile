@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN ln -snf /usr/share/zoneinfo/Europe/Moscow /etc/localtime && echo "Europe/Moscow" > /etc/timezone
 
 
-RUN playwright install --with-deps
+RUN playwright install
 
 
 # Копируем весь код проекта
