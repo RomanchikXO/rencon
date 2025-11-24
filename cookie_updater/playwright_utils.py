@@ -54,7 +54,15 @@ async def login_and_get_context(page=None, context=None):
         if not context:
             context = page.context
 
-    await page.wait_for_selector('input[data-testid="phone-input"]')
+    try:
+        await page.wait_for_selector('input[data-testid="phone-input"]')
+    except Exception as e:
+        logger.error(f"Ошибка при ожидании поля ввода номера: {e}")
+        html_content = await page.content()
+        with open('error_page.html', 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        await page.screenshot(path='error_screenshot.png')
+        raise
 
     # Введём номер (формат: 9999999999)
     conn = await async_connect_to_database()
