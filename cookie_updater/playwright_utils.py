@@ -26,7 +26,7 @@ async def get_datetime():
     return response
 
 
-async def login_and_get_context(page=None, context=None):
+async def login_and_get_context(conn, page=None, context=None):
     """
         Функция авторизации.
         Если page=None - создает новый браузер и сохраняет состояние
@@ -45,10 +45,6 @@ async def login_and_get_context(page=None, context=None):
         raise
 
     # Введём номер (формат: 9999999999)
-    conn = await async_connect_to_database()
-    if not conn:
-        logger.warning(f"Ошибка подключения к БД в login_and_get_context")
-        return
     try:
         request = ("SELECT number, tg_id "
                    "FROM myapp_wblk "
@@ -59,8 +55,6 @@ async def login_and_get_context(page=None, context=None):
     except Exception as e:
         logger.error(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
         raise
-    finally:
-        await conn.close()
 
     await page.fill('input[data-testid="phone-input"]', str(result["number"]))
 
@@ -89,11 +83,6 @@ async def login_and_get_context(page=None, context=None):
     # сохраняем состояние
     await asyncio.sleep(20)
     await context.storage_state(path="auth_state.json")
-
-    # не раскомичиваем
-    # if created_here:
-    #     await browser.close()
-    #     await playwright.stop()
 
     return context
 
@@ -148,7 +137,8 @@ async def get_and_store_cookies(page=None):
 
     conn = await async_connect_to_database()
     if not conn:
-        logger.warning(f"Ошибка подключения к БД в login_and_get_context")
+        time_now = await get_datetime()
+        logger.warning(f"{time_now} Ошибка подключения к БД в get_and_store_cookies")
         return
 
     if not page:
@@ -194,7 +184,7 @@ async def get_and_store_cookies(page=None):
             await button.click()
             await page.wait_for_load_state("load")
             # Передаем page И context для сохранения состояния
-            await login_and_get_context(page, context)
+            await login_and_get_context(conn, page, context)
             # После авторизации возвращаемся на главную
             await page.goto("https://seller.wildberries.ru/")
             await page.wait_for_load_state("load")

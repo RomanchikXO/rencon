@@ -131,6 +131,7 @@ def safe_parse_link(link, disc: int) -> tuple:
     except Exception as e:
         logger.error(f"Can't parse link. Url: {link}. Error: {e}")
 
+
 def parse_by_links(links: list, disc: int) -> List[tuple]:
     tasks = [
         safe_parse_link(link, disc)
@@ -1289,9 +1290,6 @@ async def get_supplies():
     await asyncio.gather(*tasks)
 
 
-import time
-
-
 async def get_advs_stat():
     cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
 
@@ -1831,8 +1829,83 @@ async def get_region_sales():
     await asyncio.gather(*tasks)
 
 
+async def normalize_cookies(cookies: str)->dict:
+    """ Превращаем строку с кукками в словарь """
 
-# loop = asyncio.get_event_loop()
-# res = loop.run_until_complete(test_addv())
+    try:
+        cookie = cookies.split(";")
+        correct_cookie = {i.split("=")[0]: i.split("=")[1] for i in cookie}
+    except Exception as e:
+        raise Exception(f"Ошибка нормализации кукков: {e}")
 
+    return correct_cookie
 
+async def generate_orders_from_wb_lk():
+    """сгенерировать отчет о продажах из ЛК WB"""
+
+    try:
+        conn = await async_connect_to_database()
+    except Exception as e:
+        raise Exception(f"Ошибка подключения к БД в generate_orders_from_wb_lk: {e}")
+
+    try:
+        request = ("SELECT id, cookie, authorizev3, name FROM myapp_wblk")
+        all_fields = await conn.fetch(request)
+        result = [
+            {"id": row["id"], "cookie": row["tg_id"], "authorizev3": row["authorizev3"], "name": row["name"]}
+            for row in all_fields
+        ]
+    except Exception as e:
+        raise Exception(f"Ошибка получения кукков из БД: {e}")
+
+    for lk in result:
+        if not lk["cookie"] or not lk["authorizev3"]:
+            logger.info(f"Отсутствуют Кукки или authorizev3 для кабинета {lk['name']}")
+            continue
+
+        try:
+            cookie = await normalize_cookies(lk["cookie"])
+        except Exception as e:
+            raise Exception(e)
+
+        wbx_validation_key = cookie["wbx-validation-key"]
+
+        cookies = {
+            'wbx-validation-key': '7bfdb48f-fa6d-4bec-bc31-68338fd1f4e3',
+            '_wbauid': '4517935351739291607',
+            'x-supplier-id-external': '2dafe652-b4b3-4ed6-9585-aefc757ce58a',
+        }
+
+    headers = {
+        'accept': '*/*',
+        'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
+        'authorizev3': 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NjMyMDQ1MzIsInVzZXIiOiIxNDc5NDUzNzMiLCJzaGFyZF9rZXkiOiIyMSIsImNsaWVudF9pZCI6InNlbGxlci1wb3J0YWwiLCJzZXNzaW9uX2lkIjoiM2EyOWVlMzQ4Y2MzNDUzZGIwNjkwNGM3NTMwYzU2NzIiLCJ2YWxpZGF0aW9uX2tleSI6ImZjOGI4YjAwYzhmMDQ3OTljYzk3ZWU2MTNiMDcyMzI2ZGNkZmRjZGY5MjRlN2E1NjAyMzU5NzEyZmRhYjRkZDEiLCJ1c2VyX3JlZ2lzdHJhdGlvbl9kdCI6MTcxMDM1NjQ4NSwidmVyc2lvbiI6Mn0.dSc-FviK91Ont3KbNGrr7fifCE4VOBxX2222vr0Qxv2_hn0ApV-Vz79U0BOD82T3YAqeHXrEaot01M5r10uFe9zmwQ_OYndP2m9KCtkJH15MD4y4lNMUpIIcuOze4FmdSZ0n2YJnXSfYWjBBTqnXSdgVfR-qpRbIHaTCjAtpVZhUIOeegPln8IJKEODYAAI4nB7n99Y2i3AZ-IBouQa5V5SFSGCA480R8OwSe-zz7V_thMgwqBpsmfNcUQSXfUg4H1T65I4flMj3r5Ztb-rp5tH8bCeICf6DypSrqjGuoRkAMLVcjd8KUds49ix6NhXlLvamcnNMe8lsjRzajMAHiA',
+        # 'content-length': '0',
+        'content-type': 'application/json',
+        'dnt': '1',
+        'origin': 'https://seller.wildberries.ru',
+        'priority': 'u=1, i',
+        'referer': 'https://seller.wildberries.ru/',
+        'root-version': 'v1.68.1',
+        'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "YaBrowser";v="25.10", "Yowser";v="2.5"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
+        # 'cookie': 'external-locale=ru; wbx-validation-key=7bfdb48f-fa6d-4bec-bc31-68338fd1f4e3; _wbauid=4517935351739291607; _ga=GA1.1.359934369.1758280623; _ga_TXRZMJQDFE=GS2.1.s1758828423$o5$g1$t1758828534$j60$l0$h0; x-supplier-id-external=2dafe652-b4b3-4ed6-9585-aefc757ce58a; __zzatw-wb=MDA0dC0cTHtmcDhhDHEWTT17CT4VHThHKHIzd2UqP2wmY0xcJkZHSWtlTlNCLGYbcRVNCA00PVpyIg9bOSVYCBI/CyYgF3p0K1IPEF1ERnZvG382XRw5YxELGX46Y11GRzcVJHt1EmxkCh5MVAw7FmBtEU0oP0dWVVY0XS1BCjxdRnYqdi1DIFBiS14idw9Nfy4ZFTJyKFJ/PmBDSG9lJS0tUikSGmIPR1draF1QQSRaDHF/TQl6MjAbRWYkZUpiJ0ZdUnssHxFzXWcgR0BNRzM1N1p0K2EcFyURGFE/RmhOUy4vYgo4RxgvS0Blb2wpYhw5YxENIj91F1lGQTZcGkt1ZS8MOTprbCRSUUNLY3waCmsvGhh9bixXChNgP0hzcyUtMWYnfEspNR0RMl5XVTQ7Z0FUf00IDjU7ZXQiXxYIFRFNKD9HVlVWNF0tQQk/FHN2c3grOB8hGUpWI3gRU3YuHhl8aFQMPT5iQkgoMC5DHg9bOSFUDSAORGkLG2k2ZxZJPBpyM2llbXQqUlFRWiZJWFYJKCEWeXQlT3t1Jw4JKmUzLS1ZGAgfY3glGWtyZg==U6hRow==; cfidsw-wb=wSntoUZB8rD37zoNPxQS+DL+VGpiyYXq3WBYRLBMyCS2XLSw007zbS8K1h7iuaktLMCc9XT0+/tHwLYpJsDdhBmAepFPnhs3Yx784xwdLtxlgwGSZvZy77+WxbtpuSnnvMwQtV3jFsOAdtpIYw4U0c4xsHG4rmX8yDRVJvwn',
+    }
+
+    params = {
+        'dateFrom': '10.11.25',
+        'dateTo': '16.11.25',
+    }
+
+    response = await get_data(
+        method="POST",
+        url='https://seller-weekly-report.wildberries.ru/ns/reportsviewer/analytics-back/api/report/supplier-goods/order',
+        params=params,
+        cookies=cookies,
+        headers=headers,
+    )
