@@ -146,6 +146,11 @@ async def close_any_popup(page):
 async def get_and_store_cookies(page=None):
     """Основная функция получения и сохранения cookies"""
 
+    conn = await async_connect_to_database()
+    if not conn:
+        logger.warning(f"Ошибка подключения к БД в login_and_get_context")
+        return
+
     if not page:
         playwright = await async_playwright().start()
         browser = await playwright.chromium.launch(
@@ -221,10 +226,6 @@ async def get_and_store_cookies(page=None):
             "x-supplier-id-external",
         ]
 
-        conn = await async_connect_to_database()
-        if not conn:
-            logger.warning(f"Ошибка подключения к БД в login_and_get_context")
-            return
         try:
             request = ("SELECT id, inn "
                        "FROM myapp_wblk")
@@ -232,8 +233,6 @@ async def get_and_store_cookies(page=None):
             inns = [{ "id": row["id"], "inn": row["inn"] } for row in all_fields]
         except Exception as e:
             raise Exception(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
-        finally:
-            await conn.close()
 
         current_handler = None
 
@@ -279,10 +278,6 @@ async def get_and_store_cookies(page=None):
             cookies = await page.context.cookies()
             cookies_str = ";".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies if cookie.get("name", "") in cookies_need)
 
-            conn = await async_connect_to_database()
-            if not conn:
-                logger.warning("Ошибка подключения к БД в get_and_store_cookies")
-                return
             try:
                 query = """
                         UPDATE myapp_wblk
@@ -294,8 +289,7 @@ async def get_and_store_cookies(page=None):
                 await conn.execute(query, cookies_str, authorizev3, inn["id"])
             except Exception as e:
                 raise Exception(f"Ошибка обновления кукков в лк. Error: {e}")
-            finally:
-                await conn.close()
+
             await asyncio.sleep(300)
             await page.reload()
             await get_and_store_cookies(page)
@@ -304,6 +298,10 @@ async def get_and_store_cookies(page=None):
         logger.error(f"{time_now} Ошибка: {e}")
         pass
     finally:
+        try:
+            await conn.close()
+        except:
+            pass
         try:
             await browser.close()
         except:
