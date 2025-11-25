@@ -18,22 +18,6 @@ logger = ContextLogger(logging.getLogger("myapp"))
 
 
 @shared_task
-@with_task_context("some_task")
-def some_task_task(x, y, mode="sum"):
-    logger.info(f"🟢 Запуск тестового задания с аргументами: x={x}, y={y}, mode={mode}")
-
-    if mode == "sum":
-        result = x + y
-    elif mode == "mul":
-        result = x * y
-    else:
-        result = None
-
-    logger.info(f"Результат: {result}")
-    return result
-
-
-@shared_task
 @with_task_context("update_google_table_mysklad")
 def update_google_table_mysklad_task():
     logger.info("🟢 Обновляем в Мой склад google")
