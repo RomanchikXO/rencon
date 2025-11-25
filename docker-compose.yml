@@ -7,6 +7,12 @@ services:
     ports:
       - "6380:6379"
 
+  redis_cache:
+    image: redis:7
+    container_name: redis_cache
+    ports:
+      - "6381:6379"
+
   db:
     image: postgres:15
     container_name: postgres

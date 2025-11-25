@@ -7,6 +7,7 @@ import aiohttp
 from asgiref.sync import sync_to_async
 from django.utils.timezone import now, timedelta as td
 from django.db.models import Q
+import redis
 
 from database.DataBase import async_connect_to_database
 from database.funcs_db import get_data_from_db, add_set_data_from_db
@@ -25,6 +26,7 @@ from myapp.models import Price, Adverts
 
 logger = ContextLogger(logging.getLogger("parsers"))
 
+r = redis.Redis(host='localhost', port=6381, db=0)
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 6.4; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2225.0 Safari/537.36",
@@ -1788,6 +1790,9 @@ async def process_orders_from_lk(lk: dict, conn):
             'dateTo': _date,
         }
 
+        # чтобы не было так быстро - замедляем
+        delay = random.uniform(1.7, 3.2)
+        await asyncio.sleep(delay)
 
         response = await get_data(
             method="POST",
@@ -1800,4 +1805,7 @@ async def process_orders_from_lk(lk: dict, conn):
             logger.error(f"Ошибка создания отчета. Дата: {_date}. ЛК: {lk['name']}")
             continue
 
-        # тут кэшируем response["data"]["id"]
+        try:
+            r.set(f"download_{get_uuid()}", response["data"]["id"])
+        except Exception as e:
+            logger.error(f"Ошибка кеширования: {e}")
