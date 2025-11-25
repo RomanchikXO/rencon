@@ -1707,6 +1707,7 @@ async def normalize_cookies(cookies: str)->dict:
 
     return correct_cookie
 
+
 async def get_orders_from_wb_lk():
     """
         Главная функция получения отчет о продажах из ЛК WB
@@ -1736,6 +1737,7 @@ async def get_orders_from_wb_lk():
             id_to_result = {name: result for name, result in zip(data.keys(), results)}
     except Exception as e:
         logger.error(e)
+    finally:
         await conn.close()
 
 
@@ -1776,12 +1778,12 @@ async def process_orders_from_lk(lk: dict, conn):
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
     }
 
-    request = ("SELECT id FROM myapp_orders WHERE lk_id = $1 LIMIT 1")
-    all_fields = await conn.fetch(request)
+    request = "SELECT id FROM myapp_orders WHERE lk_id = $1 LIMIT 1"
+    all_fields = await conn.fetch(request, lk["id"])
     if all_fields:
         reduce = 14
     else:
-        reduce = 60
+        reduce = 1
 
     for day in range(reduce, 0, -1):
         _date = await get_time_str(format="%d.%m.%y", reduce=day)
@@ -1806,6 +1808,11 @@ async def process_orders_from_lk(lk: dict, conn):
             continue
 
         try:
-            r.set(f"download_{get_uuid()}", response["data"]["id"])
+            r.set(f"download_{lk['id']}_{_date}_{get_uuid()}", response["data"]["id"])
         except Exception as e:
             logger.error(f"Ошибка кеширования: {e}")
+
+
+async def download_orders_from_wb_lk():
+    """Здесь будет загрузка данных"""
+    pass

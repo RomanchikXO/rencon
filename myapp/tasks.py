@@ -3,7 +3,7 @@ import asyncio
 
 from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_age_by_period,
                                 get_stat_products, get_advs, get_advs_stat, get_fin_report,
-                                make_and_get_save_report, get_region_sales, get_time_str)
+                                make_and_get_save_report, get_region_sales, get_time_str, get_orders_from_wb_lk)
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
@@ -22,6 +22,15 @@ logger = ContextLogger(logging.getLogger("myapp"))
 def get_time_str_task():
     logger.info("🟢 Тест задача")
     a = asyncio.run(get_time_str(format="%d.%m.%y.%H.%M.%S"))
+
+    logger.info(f"Конец задачи {a}")
+
+
+@shared_task
+@with_task_context("get_orders_from_wb_lk")
+def get_orders_from_wb_lk_task():
+    logger.info("🟢 Тест задача")
+    a = asyncio.run(get_orders_from_wb_lk)
 
     logger.info(f"Конец задачи {a}")
 
