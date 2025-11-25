@@ -31,6 +31,20 @@ headers = {
     "Content-Type": "application/json; charset=UTF-8",
 }
 
+async def get_time_str(format: str, reduce: int = None, increase: int = None):
+    """
+    вернуть дату строкой
+    reduce: сколько уменьшить дней
+    increase: сколько прибавить дней
+    """
+    if reduce:
+        respose = (datetime.now() - timedelta(days=reduce)).strftime(format)
+    elif increase:
+        respose = (datetime.now() - timedelta(days=increase)).strftime(format)
+    else:
+        respose = datetime.now().strftime(format)
+    return respose
+
 
 def get_uuid()-> str:
     generated_uuid = str(uuid.uuid4())
@@ -84,65 +98,6 @@ def get_data(method: str, url: str, response_type="json", **kwargs):
             logger.info(f"Can't get data, retry {attempt}")
             time.sleep(attempt * 2)
     logger.error(f"Can't get data, URl: {url}")
-
-
-def calculate_card_price(price: Union[int, float]) -> int:
-    card_price = int((price * 0.97))
-    if price >= 15000:
-        card_price = 0
-    return card_price
-
-
-def parse_link(
-    link: Union[int, str], disc: int
-) -> tuple:
-    api_url = "https://card.wb.ru/cards/v4/detail"
-    params = {
-        "spp": "0",
-        "reg": "0",
-        "appType": "1",
-        "emp": "0",
-        "dest": -4734876,
-        "nm": link,
-    }
-    data = get_data("get", api_url, "json", headers=headers, params=params)
-
-    if not data or not data["products"][0]:
-        logger.info(f"Fail {link}. Функция: parse_link. Data: {data}")
-        return 0, 0
-
-    sku = data["products"][0]
-
-    try:
-        price = int(int(sku["sizes"][0]["price"]["product"] / 100 * 0.97) * ((100-disc) / 100))
-    except Exception as e:
-        logger.info(f"Не нашли цену для артикула {link}. Ошибка {e}")
-        price = 0
-
-    rating = sku.get("reviewRating", 0)
-
-    return price, rating
-
-
-def safe_parse_link(link, disc: int) -> tuple:
-    try:
-        data = parse_link(link, disc)
-        return data
-    except Exception as e:
-        logger.error(f"Can't parse link. Url: {link}. Error: {e}")
-
-
-def parse_by_links(links: list, disc: int) -> List[tuple]:
-    tasks = [
-        safe_parse_link(link, disc)
-        for link in links
-    ]
-    return tasks
-
-
-def parse(links: list, disc: int) -> List[tuple]:
-    response = parse_by_links(links, disc)
-    return response
 
 
 async def wb_api(session, param):
@@ -818,96 +773,6 @@ async def get_prices_from_lk(lk: dict):
                     return None
     except Exception as e:
         raise Exception(e)
-
-
-async def get_qustions():
-    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
-    async def get_data(cab: dict):
-        """
-        Получаем неотвеченный вопросы
-        """
-        async with aiohttp.ClientSession() as session:
-            param = {
-                "type": "get_question",
-                "API_KEY": cab["token"],
-                "isAnswered": 0,
-            }
-            response = await wb_api(session, param)
-            response = response["data"]["questions"]
-
-            data = [
-                {
-                    "id_question": i["id"],
-                    "nmid": i["productDetails"]["nmId"],
-                    "createdDate": i["createdDate"],
-                    "question": i["text"]
-                }
-                for i in response
-            ]
-
-            return data
-
-
-    tasks = [
-        get_data(cab)
-        for cab in cabinets
-    ]
-    data = await asyncio.gather(*tasks)
-    data = list(chain.from_iterable(data))
-
-    api_ids_questions = [i["id_question"] for i in data]
-
-    ids_db_is_not_ans = await get_data_from_db("myapp_questions", ["id_question"], {"is_answered": False})
-    ids_db_is_not_ans = [i["id_question"] for i in ids_db_is_not_ans]
-
-    ids_need_change_to_true = list(set(ids_db_is_not_ans) - set(api_ids_questions))
-
-    if ids_need_change_to_true:
-        conn = await async_connect_to_database()
-        if not conn:
-            logger.error("Ошибка подключения к БД в get_qustions")
-            raise
-        try:
-            placeholders = ','.join(f'${i + 1}' for i in range(len(ids_need_change_to_true)))
-            query = f"""
-                UPDATE myapp_questions 
-                SET
-                    is_answered = TRUE
-                WHERE id_question IN ({placeholders})
-            """
-            await conn.execute(query, *ids_need_change_to_true)
-        except Exception as e:
-            logger.error(
-                f"Ошибка обновления отвеченных вопросов в myapp_questions. Error: {e}"
-            )
-            raise
-        finally:
-            await conn.close()
-
-    data = [i for i in data if i["id_question"] not in ids_need_change_to_true]
-
-    if data:
-        conn = await async_connect_to_database()
-        if not conn:
-            logger.error("Ошибка подключения к БД в get_qustions")
-            raise
-        conn = await conn.acquire()
-        try:
-            async with conn.transaction():
-                for quant in data:
-                    await conn.execute(
-                        """
-                        INSERT INTO myapp_questions (nmid, id_question, created_at, question, answer, is_answered)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                        ON CONFLICT (nmid, id_question) DO NOTHING
-                        """,
-                        quant["nmid"], quant["id_question"], parse_datetime(quant["createdDate"]),
-                        quant["question"], "", False
-                    )
-        except Exception as e:
-            logger.error(f"Ошибка при добавлении вопросов в БД. Error: {e}")
-        finally:
-            await conn.close()
 
 
 async def get_stock_age_by_period():
@@ -1840,47 +1705,60 @@ async def normalize_cookies(cookies: str)->dict:
 
     return correct_cookie
 
-async def generate_orders_from_wb_lk():
-    """сгенерировать отчет о продажах из ЛК WB"""
+async def get_orders_from_wb_lk():
+    """
+        Главная функция получения отчет о продажах из ЛК WB
+        date_from и date_to в формате ДД.ММ.ГГ
+    """
 
+    conn = await async_connect_to_database()
+    if not conn:
+        logger.error(f"Ошибка подключения к БД")
+        raise
     try:
-        conn = await async_connect_to_database()
-    except Exception as e:
-        raise Exception(f"Ошибка подключения к БД в generate_orders_from_wb_lk: {e}")
-
-    try:
-        request = ("SELECT id, cookie, authorizev3, name FROM myapp_wblk")
-        all_fields = await conn.fetch(request)
-        result = [
-            {"id": row["id"], "cookie": row["tg_id"], "authorizev3": row["authorizev3"], "name": row["name"]}
-            for row in all_fields
-        ]
-    except Exception as e:
-        raise Exception(f"Ошибка получения кукков из БД: {e}")
-
-    for lk in result:
-        if not lk["cookie"] or not lk["authorizev3"]:
-            logger.info(f"Отсутствуют Кукки или authorizev3 для кабинета {lk['name']}")
-            continue
-
         try:
-            cookie = await normalize_cookies(lk["cookie"])
+            request = ("SELECT id, cookie, authorizev3, name FROM myapp_wblk")
+            all_fields = await conn.fetch(request)
+            result = [
+                {"id": row["id"], "cookie": row["tg_id"], "authorizev3": row["authorizev3"], "name": row["name"]}
+                for row in all_fields
+            ]
         except Exception as e:
-            raise Exception(e)
+            raise Exception(f"Ошибка получения кукков из БД: {e}")
 
-        wbx_validation_key = cookie["wbx-validation-key"]
 
-        cookies = {
-            'wbx-validation-key': '7bfdb48f-fa6d-4bec-bc31-68338fd1f4e3',
-            '_wbauid': '4517935351739291607',
-            'x-supplier-id-external': '2dafe652-b4b3-4ed6-9585-aefc757ce58a',
-        }
+        async with aiohttp.ClientSession() as session:
+            data = {cab["id"]: process_orders_from_lk(cab, conn) for cab in result}
+            results = await asyncio.gather(*data.values())
+
+            id_to_result = {name: result for name, result in zip(data.keys(), results)}
+    except Exception as e:
+        logger.error(e)
+        await conn.close()
+
+
+async def process_orders_from_lk(lk: dict, conn):
+    """генерируем отчеты"""
+
+    if not lk["cookie"] or not lk["authorizev3"]:
+        logger.info(f"Отсутствуют Кукки или authorizev3 для кабинета {lk['name']}")
+        return
+
+    try:
+        cookie = await normalize_cookies(lk["cookie"])
+    except Exception as e:
+        raise Exception(e)
+
+    cookies = {
+        "wbx-validation-key": cookie["wbx-validation-key"],
+        '_wbauid': cookie["_wbauid"],
+        'x-supplier-id-external': cookie["x-supplier-id-external"],
+    }
 
     headers = {
         'accept': '*/*',
         'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
-        'authorizev3': 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NjMyMDQ1MzIsInVzZXIiOiIxNDc5NDUzNzMiLCJzaGFyZF9rZXkiOiIyMSIsImNsaWVudF9pZCI6InNlbGxlci1wb3J0YWwiLCJzZXNzaW9uX2lkIjoiM2EyOWVlMzQ4Y2MzNDUzZGIwNjkwNGM3NTMwYzU2NzIiLCJ2YWxpZGF0aW9uX2tleSI6ImZjOGI4YjAwYzhmMDQ3OTljYzk3ZWU2MTNiMDcyMzI2ZGNkZmRjZGY5MjRlN2E1NjAyMzU5NzEyZmRhYjRkZDEiLCJ1c2VyX3JlZ2lzdHJhdGlvbl9kdCI6MTcxMDM1NjQ4NSwidmVyc2lvbiI6Mn0.dSc-FviK91Ont3KbNGrr7fifCE4VOBxX2222vr0Qxv2_hn0ApV-Vz79U0BOD82T3YAqeHXrEaot01M5r10uFe9zmwQ_OYndP2m9KCtkJH15MD4y4lNMUpIIcuOze4FmdSZ0n2YJnXSfYWjBBTqnXSdgVfR-qpRbIHaTCjAtpVZhUIOeegPln8IJKEODYAAI4nB7n99Y2i3AZ-IBouQa5V5SFSGCA480R8OwSe-zz7V_thMgwqBpsmfNcUQSXfUg4H1T65I4flMj3r5Ztb-rp5tH8bCeICf6DypSrqjGuoRkAMLVcjd8KUds49ix6NhXlLvamcnNMe8lsjRzajMAHiA',
-        # 'content-length': '0',
+        'authorizev3': lk["authorizev3"],
         'content-type': 'application/json',
         'dnt': '1',
         'origin': 'https://seller.wildberries.ru',
@@ -1894,18 +1772,32 @@ async def generate_orders_from_wb_lk():
         'sec-fetch-mode': 'cors',
         'sec-fetch-site': 'same-site',
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
-        # 'cookie': 'external-locale=ru; wbx-validation-key=7bfdb48f-fa6d-4bec-bc31-68338fd1f4e3; _wbauid=4517935351739291607; _ga=GA1.1.359934369.1758280623; _ga_TXRZMJQDFE=GS2.1.s1758828423$o5$g1$t1758828534$j60$l0$h0; x-supplier-id-external=2dafe652-b4b3-4ed6-9585-aefc757ce58a; __zzatw-wb=MDA0dC0cTHtmcDhhDHEWTT17CT4VHThHKHIzd2UqP2wmY0xcJkZHSWtlTlNCLGYbcRVNCA00PVpyIg9bOSVYCBI/CyYgF3p0K1IPEF1ERnZvG382XRw5YxELGX46Y11GRzcVJHt1EmxkCh5MVAw7FmBtEU0oP0dWVVY0XS1BCjxdRnYqdi1DIFBiS14idw9Nfy4ZFTJyKFJ/PmBDSG9lJS0tUikSGmIPR1draF1QQSRaDHF/TQl6MjAbRWYkZUpiJ0ZdUnssHxFzXWcgR0BNRzM1N1p0K2EcFyURGFE/RmhOUy4vYgo4RxgvS0Blb2wpYhw5YxENIj91F1lGQTZcGkt1ZS8MOTprbCRSUUNLY3waCmsvGhh9bixXChNgP0hzcyUtMWYnfEspNR0RMl5XVTQ7Z0FUf00IDjU7ZXQiXxYIFRFNKD9HVlVWNF0tQQk/FHN2c3grOB8hGUpWI3gRU3YuHhl8aFQMPT5iQkgoMC5DHg9bOSFUDSAORGkLG2k2ZxZJPBpyM2llbXQqUlFRWiZJWFYJKCEWeXQlT3t1Jw4JKmUzLS1ZGAgfY3glGWtyZg==U6hRow==; cfidsw-wb=wSntoUZB8rD37zoNPxQS+DL+VGpiyYXq3WBYRLBMyCS2XLSw007zbS8K1h7iuaktLMCc9XT0+/tHwLYpJsDdhBmAepFPnhs3Yx784xwdLtxlgwGSZvZy77+WxbtpuSnnvMwQtV3jFsOAdtpIYw4U0c4xsHG4rmX8yDRVJvwn',
     }
 
-    params = {
-        'dateFrom': '10.11.25',
-        'dateTo': '16.11.25',
-    }
+    request = ("SELECT id FROM myapp_orders WHERE lk_id = $1 LIMIT 1")
+    all_fields = await conn.fetch(request)
+    if all_fields:
+        reduce = 14
+    else:
+        reduce = 60
 
-    response = await get_data(
-        method="POST",
-        url='https://seller-weekly-report.wildberries.ru/ns/reportsviewer/analytics-back/api/report/supplier-goods/order',
-        params=params,
-        cookies=cookies,
-        headers=headers,
-    )
+    for day in range(reduce, 0, -1):
+        _date = await get_time_str(format="%d.%m.%y", reduce=day)
+        params = {
+            'dateFrom': _date,
+            'dateTo': _date,
+        }
+
+
+        response = await get_data(
+            method="POST",
+            url='https://seller-weekly-report.wildberries.ru/ns/reportsviewer/analytics-back/api/report/supplier-goods/order',
+            params=params,
+            cookies=cookies,
+            headers=headers,
+        )
+        if not response or not response.get("data"):
+            logger.error(f"Ошибка создания отчета. Дата: {_date}. ЛК: {lk['name']}")
+            continue
+
+        # тут кэшируем response["data"]["id"]
