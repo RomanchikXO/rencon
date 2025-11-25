@@ -262,7 +262,7 @@ async def get_and_store_cookies(page=None):
                 await asyncio.sleep(5)
                 await supplier_radio_label.click()
             except PlaywrightTimeoutError:
-                logger.warning(f"Элемент поставщика '{target_text}' не найден или не появился вовремя")
+                logger.warning(f"{time.time()} Элемент поставщика '{target_text}' не найден или не появился вовремя")
                 continue
 
             await asyncio.sleep(3)
