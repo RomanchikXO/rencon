@@ -1,8 +1,8 @@
 from celery import shared_task
 import asyncio
 
-from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_orders, get_stock_age_by_period,
-                                get_qustions, get_stat_products, get_advs, get_advs_stat, get_fin_report,
+from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_age_by_period,
+                                get_stat_products, get_advs, get_advs_stat, get_fin_report,
                                 make_and_get_save_report, get_region_sales)
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.google_our_prices import get_products_and_prices
@@ -99,14 +99,6 @@ def get_stat_products_task():
 
 
 @shared_task
-@with_task_context("get_questions_task")
-def get_questions_task():
-    logger.info("🟢 Обновляем вопросы в БД")
-    asyncio.run(get_qustions())
-    logger.info("Вопросы в БД обновлены")
-
-
-@shared_task
 @with_task_context("get_stock_age_by_period_task")
 def get_stock_age_by_period_task():
     logger.info("🟢 Получаем время нахождения товара на складах за пероиды")
@@ -136,14 +128,6 @@ def get_stocks_to_db():
     logger.info("🟢 Обновляем таблицу с остатками товаров на складах в бд")
     asyncio.run(get_stocks_data_2_weeks())
     logger.info("Таблица с остатками товаров на складах обновлена")
-
-
-@shared_task
-@with_task_context("get_orders_to_db")
-def get_orders_to_db():
-    logger.info("🟢 Обновляем таблицу с заказами в бд")
-    asyncio.run(get_orders())
-    logger.info("Таблица с заказами в бд обновлена")
 
 
 @shared_task
