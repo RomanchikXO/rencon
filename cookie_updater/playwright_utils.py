@@ -237,7 +237,7 @@ async def get_and_store_cookies(page=None):
 
         current_handler = None
 
-        # authorizev3 = None
+        authorizev3 = None
         for index, inn in enumerate(inns): # тут inns это массив с инн с БД
 
             # Удаляем старый обработчик
