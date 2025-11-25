@@ -5,7 +5,6 @@ from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_ag
                                 get_stat_products, get_advs, get_advs_stat, get_fin_report,
                                 make_and_get_save_report, get_region_sales)
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
-from tasks.google_our_prices import get_products_and_prices
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
                                      upload_products_stat_to_google, upload_fin_report_to_google,
@@ -104,14 +103,6 @@ def get_stock_age_by_period_task():
     logger.info("🟢 Получаем время нахождения товара на складах за пероиды")
     asyncio.run(get_stock_age_by_period())
     logger.info("Время нахождения товара на складах за пероиды получено")
-
-
-@shared_task
-@with_task_context("get_prices_and_products")
-def get_prices_and_products():
-    logger.info("🟢 Собираем товары и цены в БД")
-    asyncio.run(get_products_and_prices())
-    logger.info("Товары и цены собраны в БД")
 
 
 @shared_task
