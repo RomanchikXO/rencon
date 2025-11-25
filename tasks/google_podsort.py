@@ -10,29 +10,6 @@ from context_logger import ContextLogger
 logger = ContextLogger(logging.getLogger("core"))
 
 
-async def get_orders_in_db() -> dict:
-    conn = await async_connect_to_database()
-    date_from = str((datetime.now() + timedelta(hours=3) - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0))
-    date_to = str((datetime.now() + timedelta(hours=3)).replace(hour=0, minute=0, second=0, microsecond=0))
-
-    if not conn:
-        logger.warning(f"Ошибка подключения к БД в fetch_data__get_adv_id")
-        raise
-    try:
-        request = (f"SELECT supplierarticle, COUNT(*) AS total "
-                   f"FROM myapp_orders "
-                   f"WHERE date >= '{date_from}' AND date < '{date_to}' "
-                   f"AND EXISTS (SELECT 1 FROM myapp_wblk WHERE myapp_wblk.id = myapp_orders.lk_id)"
-                   f"GROUP BY supplierarticle")
-        all_fields = await conn.fetch(request)
-        result = {row["supplierarticle"]: row["total"] for row in all_fields}
-        return result
-    except Exception as e:
-        logger.error(f"Ошибка получения данных из myapp_orders. Запрос {request}. Error: {e}")
-    finally:
-        await conn.close()
-
-
 async def get_quantity_in_db(supplierarticles: list) -> dict:
     conn = await async_connect_to_database()
 

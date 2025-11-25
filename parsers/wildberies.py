@@ -753,65 +753,6 @@ async def get_stocks_data_2_weeks():
                 await conn.close()
 
 
-async def get_orders():
-    cabinets = await get_data_from_db("myapp_wblk", ["id", "name", "token"])
-    for cab in cabinets:
-        async with aiohttp.ClientSession() as session:
-            date_from = (datetime.now() - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
-            param = {
-                "type": "orders",
-                "API_KEY": cab["token"],
-                "date_from": str(date_from),
-                "flag": 0
-            }
-            response = await wb_api(session, param)
-            conn = await async_connect_to_database()
-            if not conn:
-                logger.warning("Ошибка подключения к БД")
-                raise
-            try:
-                for order in response:
-                    await add_set_data_from_db(
-                        conn=conn,
-                        table_name="myapp_orders",
-                        data=dict(
-                            lk_id=cab["id"],
-                            date=parse_datetime(order["date"]),
-                            lastchangedate=parse_datetime(order["lastChangeDate"]),
-                            warehousename=order["warehouseName"].replace("Виртуальный ", "") if order["warehouseName"].startswith("Виртуальный") else order["warehouseName"],
-                            warehousetype=order["warehouseType"],
-                            countryname=order["countryName"],
-                            oblastokrugname=order["oblastOkrugName"],
-                            regionname=order["regionName"],
-                            supplierarticle=order["supplierArticle"],
-                            nmid=order["nmId"],
-                            barcode=int(order["barcode"]) if order.get("barcode") else None,
-                            category=order["category"],
-                            subject=order["subject"],
-                            brand=order["brand"],
-                            techsize=order["techSize"],
-                            incomeid=order["incomeID"],
-                            issupply=order["isSupply"],
-                            isrealization=order["isRealization"],
-                            totalprice=order["totalPrice"],
-                            discountpercent=order["discountPercent"],
-                            spp=order["spp"],
-                            finishedprice=float(order["finishedPrice"]),
-                            pricewithdisc=float(order["priceWithDisc"]),
-                            iscancel=order["isCancel"],
-                            canceldate=parse_datetime(order["cancelDate"]),
-                            sticker=order["sticker"],
-                            gnumber=order["gNumber"],
-                            srid=order["srid"],
-                        ),
-                        conflict_fields=['nmid', 'lk_id', 'srid']
-                    )
-            except Exception as e:
-                logger.error(f"Ошибка при добавлении заказов в БД. Error: {e}")
-            finally:
-                await conn.close()
-
-
 async def get_prices_from_lk(lk: dict):
     """
     Получаем данные о ценах прямо из личного кабинета
