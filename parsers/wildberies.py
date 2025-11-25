@@ -1723,7 +1723,7 @@ async def get_orders_from_wb_lk():
             request = ("SELECT id, cookie, authorizev3, name FROM myapp_wblk")
             all_fields = await conn.fetch(request)
             result = [
-                {"id": row["id"], "cookie": row["tg_id"], "authorizev3": row["authorizev3"], "name": row["name"]}
+                {"id": row["id"], "cookie": row["cookie"], "authorizev3": row["authorizev3"], "name": row["name"]}
                 for row in all_fields
             ]
         except Exception as e:
