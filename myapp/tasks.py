@@ -21,7 +21,7 @@ logger = ContextLogger(logging.getLogger("myapp"))
 @with_task_context("get_time_str")
 def get_time_str_task():
     logger.info("🟢 Тест задача")
-    a = asyncio.run(get_time_str(format="%d.%m.%y"))
+    a = asyncio.run(get_time_str(format="%d.%m.%y.%H.%M.%S"))
 
     logger.info(f"Конец задачи {a}")
 
