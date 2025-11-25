@@ -1,12 +1,8 @@
-import json
 import math
 import asyncio
-from datetime import datetime, timedelta
 
 from database.DataBase import async_connect_to_database
-from google.functions import fetch_google_sheet_data, update_google_prices_data_with_format, update_google_sheet_data
-from parsers.wildberies import get_products_and_prices, parse, get_prices_from_lk
-from database.funcs_db import get_data_from_db
+from parsers.wildberies import get_prices_from_lk
 
 import logging
 from context_logger import ContextLogger
@@ -107,6 +103,3 @@ async def get_black_price_spp():
         logger.error(f"Ошибка обновления spp и blackprice в myapp_price. Error: {e}")
     finally:
         await conn.close()
-
-# loop = asyncio.get_event_loop()
-# res = loop.run_until_complete(set_prices_on_google())
