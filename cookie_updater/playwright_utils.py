@@ -9,6 +9,8 @@ from context_logger import ContextLogger
 from bot.states import set_status, get_status
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 import os
+from datetime import datetime
+
 
 logger = ContextLogger(logging.getLogger("cookie_updater"))
 
@@ -18,6 +20,10 @@ def ask_user_for_input(user_id):
     bot.send_message(user_id, "Введите код из SMS:")
     set_status("get_sms_code", user_id)
 
+
+async def get_datetime():
+    response = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return response
 
 
 async def login_and_get_context(page=None, context=None):
@@ -30,7 +36,8 @@ async def login_and_get_context(page=None, context=None):
     try:
         await page.wait_for_selector('input[data-testid="phone-input"]')
     except Exception as e:
-        logger.error(f"{time.time()} Ошибка при ожидании поля ввода номера: {e}")
+        time_now = await get_datetime()
+        logger.error(f"{time_now} Ошибка при ожидании поля ввода номера: {e}")
         html_content = await page.content()
         with open('/app/logs/error_page.html', 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -262,7 +269,8 @@ async def get_and_store_cookies(page=None):
                 await asyncio.sleep(5)
                 await supplier_radio_label.click()
             except PlaywrightTimeoutError:
-                logger.warning(f"{time.time()} Элемент поставщика '{target_text}' не найден или не появился вовремя")
+                time_now = await get_datetime()
+                logger.warning(f"{time_now} Элемент поставщика '{target_text}' не найден или не появился вовремя")
                 continue
 
             await asyncio.sleep(3)
@@ -292,7 +300,8 @@ async def get_and_store_cookies(page=None):
             await page.reload()
             await get_and_store_cookies(page)
     except Exception as e:
-        logger.error(f"{time.time()} Ошибка: {e}")
+        time_now = await get_datetime()
+        logger.error(f"{time_now} Ошибка: {e}")
         pass
     finally:
         try:
