@@ -29,10 +29,9 @@ def get_time_str_task():
 @shared_task
 @with_task_context("get_orders_from_wb_lk")
 def get_orders_from_wb_lk_task():
-    logger.info("🟢 Тест задача")
-    a = asyncio.run(get_orders_from_wb_lk)
-
-    logger.info(f"Конец задачи {a}")
+    logger.info("🟢 Запускаем генерацию отчетов заказов в ЛК wb")
+    asyncio.run(get_orders_from_wb_lk())
+    logger.info(f"Генерация завершена")
 
 
 @shared_task
