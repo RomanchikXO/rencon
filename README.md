@@ -24,7 +24,7 @@ docker-compose down
 docker-compose down
 docker-compose up --build -d
 
-# при изменениях в tasks/ parsers/ tasks.py funcs_db.py celery_config.py mpstat.py logging_config.py logg_set.py
+# при изменениях в tasks/ parsers/ tasks.py funcs_db.py celery_config.py logging_config.py logg_set.py
 # автоматически на сервере celery_worker перезапускается
 
 # при изменениях в django_app/ logg_set.py

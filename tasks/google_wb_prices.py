@@ -1,12 +1,10 @@
 import time
 from typing import List
 from parsers.wildberies import parse
-from google.functions import fetch_google_sheet_data, update_google_sheet_data_with_format, get_column_letter, get_ids_pages_table
-from mpstat import get_revenue_mpstat
+from google.functions import fetch_google_sheet_data
 
 import logging
 from context_logger import ContextLogger
-from database.DataBase import connect_to_database
 
 logger = ContextLogger(logging.getLogger("core"))
 

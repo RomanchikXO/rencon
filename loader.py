@@ -4,7 +4,6 @@ import os
 
 load_dotenv()
 
-X_Mpstats_TOKEN = os.getenv("X-Mpstats-TOKEN")
 
 POSTGRES_DB=os.getenv("POSTGRES_DB")
 POSTGRES_USER=os.getenv("POSTGRES_USER")

@@ -55,11 +55,6 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'mpstat': {
-            'handlers': ['db'],
-            'level': 'INFO',
-            'propagate': True,
-        },
         'fastapi_app': {
             'handlers': ['db'],
             'level': 'INFO',
