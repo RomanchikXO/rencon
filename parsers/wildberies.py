@@ -1,13 +1,15 @@
 import asyncio
+import base64
 import random
 import httpx
-from typing import Union, List
 import time
 import aiohttp
 from asgiref.sync import sync_to_async
 from django.utils.timezone import now, timedelta as td
 from django.db.models import Q
 import redis
+from openpyxl import load_workbook
+from io import BytesIO
 
 from database.DataBase import async_connect_to_database
 from database.funcs_db import get_data_from_db, add_set_data_from_db
@@ -708,72 +710,6 @@ async def get_stocks_data_2_weeks():
                 logger.error(f"Ошибка при добавлении остатков в БД. Error: {e}")
             finally:
                 await conn.close()
-
-
-async def get_prices_from_lk(lk: dict):
-    """
-    Получаем данные о ценах прямо из личного кабинета
-    Returns:
-    """
-
-    cookie_str = lk["cookie"]
-    cookie_list = cookie_str.split(";")
-    cookie_dict = {i.split("=")[0]: i.split("=")[1] for i in cookie_list}
-
-    authorizev3 = lk["authorizev3"]
-
-    proxy = "31806a1a:6846a6171a@45.13.192.129:30018"
-
-    cookies = {
-        'external-locale': 'ru',
-        '_wbauid': cookie_dict["_wbauid"],
-        'wbx-validation-key': cookie_dict["wbx-validation-key"],
-        'WBTokenV3': authorizev3,
-        'x-supplier-id-external': cookie_dict["x-supplier-id-external"],
-    }
-
-    headers = {
-        'accept': '*/*',
-        'accept-language': 'ru-RU,ru;q=0.9',
-        'authorizev3': authorizev3,
-        'content-type': 'application/json',
-        'origin': 'https://seller.wildberries.ru',
-        'priority': 'u=1, i',
-        'referer': 'https://seller.wildberries.ru/',
-        'sec-ch-ua': '"Not.A/Brand";v="99", "Chromium";v="136"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-origin',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    }
-
-    json_data = {
-        'limit': 200,
-        'offset': 0,
-        'facets': [],
-        'filterWithoutPrice': False,
-        'filterWithLeftovers': False,
-        'sort': 'price',
-        'sortOrder': 0,
-    }
-    url = "https://discounts-prices.wildberries.ru/ns/dp-api/discounts-prices/suppliers/api/v1/list/goods/filter"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, cookies=cookies, json=json_data, timeout=60, #proxy=f"http://{proxy}",
-                                ssl=False) as response:
-                response_text = await response.text()
-                try:
-                    response.raise_for_status()
-                    return json.loads(response_text)
-                except Exception as e:
-                    logger.error(
-                        f"Ошибка в get_prices_from_lk: {e}.  Ответ: {response_text}"
-                    )
-                    return None
-    except Exception as e:
-        raise Exception(e)
 
 
 async def get_stock_age_by_period():
@@ -1696,7 +1632,7 @@ async def get_region_sales():
 
 
 async def normalize_cookies(cookies: str)->dict:
-    """ Превращаем строку с кукками в словарь """
+    """ Превращаем строку с кукками в словарь с ключами _wbauid, wbx-validation-key, x-supplier-id-external"""
 
     try:
         cookie = cookies.split(";")
@@ -1826,5 +1762,103 @@ async def process_orders_from_lk(lk: dict, conn):
 
 
 async def download_orders_from_wb_lk():
-    """Здесь будет загрузка данных"""
-    pass
+    """Здесь будет загрузка данных о заказх из ЛК ВБ"""
+    try:
+        keys = r.keys("download_*")
+        result = {key.decode(): r.get(key).decode() for key in keys}
+    except Exception as e:
+        logger.error(f"Ошибка получения загрузочных ключей: {e}")
+
+    if not result:
+        logger.info(f"Загрузочные ключи отсутствуют")
+        return
+
+    cookies_by_id = {}
+
+    for key, val in result.items():
+        _, lk_id, _date, _uuid = key.split("_")
+
+        if not (cookie := cookies_by_id.get(lk_id)):
+            conn = await async_connect_to_database()
+            if not conn:
+                logger.error(f"Ошибка подключения к БД")
+                raise
+            try:
+                request = "SELECT cookie, authorizev3, name FROM myapp_wblk where lk_id = $1"
+                all_fields = await conn.fetch(request, lk_id)
+                all_fields = all_fields[0]
+                result = {
+                    "cookie": all_fields["cookie"], "authorizev3": all_fields["authorizev3"],
+                    "name": all_fields["name"]
+                }
+
+                cookies_by_id[lk_id] = {
+                    "cookie": normalize_cookies(result["cookie"]),
+                    "authorizev3": result["authorizev3"]
+                }
+            except Exception as e:
+                raise Exception(f"Ошибка получения кукков из БД: {e}")
+            finally:
+                await conn.close()
+
+        cookies = {
+            "wbx-validation-key": cookie["cookie"]["wbx-validation-key"],
+            '_wbauid': cookie["cookie"]["_wbauid"],
+            'x-supplier-id-external': cookie["cookie"]["x-supplier-id-external"],
+        }
+
+        headers = {
+            'accept': '*/*',
+            'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
+            'authorizev3': cookie["authorizev3"],
+            'content-type': 'application/json',
+            'dnt': '1',
+            'origin': 'https://seller.wildberries.ru',
+            'priority': 'u=1, i',
+            'referer': 'https://seller.wildberries.ru/',
+            'root-version': 'v1.68.1',
+            'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "YaBrowser";v="25.10", "Yowser";v="2.5"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
+        }
+
+        response = await get_data(
+            method="GET",
+            url=f"https://seller-weekly-report.wildberries.ru/ns/reportsviewer/analytics-back/api/report/supplier-goods/xlsx/{val}",
+            cookies=cookies,
+            headers=headers,
+        )
+
+        delay = random.uniform(1.7, 3.2)
+        await asyncio.sleep(delay)
+
+        if not response or not response.get("data"):
+            logger.error(f"Ошибка скачивания отчета. Дата: {_date}. ЛК: {lk_id}")
+            continue
+        else:
+            r.set(f"LoadToBase_{lk_id}_{_date}_{get_uuid()}", response["data"])
+            r.delete(key)
+
+
+async def load_to_db_report():
+    """тут декодирем отчет о заказх из ЛК ВБ и загружаем в БД"""
+
+    try:
+        keys = r.keys("LoadToBase_*")
+        result = {key.decode(): r.get(key).decode() for key in keys}
+    except Exception as e:
+        logger.error(f"Ошибка получения base64 данных: {e}")
+
+    for key, data in result.items():
+        _, lk_id, _date, _uuid = key.split("_")
+
+        decoded = base64.b64decode(data)
+        wb = load_workbook(filename=BytesIO(decoded))
+        ws = wb.active
+
+        for row in ws.iter_rows(values_only=True):
+            print(row)
