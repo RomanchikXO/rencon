@@ -225,22 +225,16 @@ async def get_and_store_cookies(page=None, conn=None):
         except Exception as e:
             raise Exception(f"Ошибка получения данных из myapp_wblk. Запрос {request}. Error: {e}")
 
-        current_handler = None
-
         authorizev3 = None
+
+        async def log_request(request):
+            nonlocal authorizev3
+            if "authorizev3" in request.headers:
+                authorizev3 = request.headers["authorizev3"]
+
+        page.on("request", log_request)
+
         for index, inn in enumerate(inns): # тут inns это массив с инн с БД
-
-            # Удаляем старый обработчик
-            if current_handler:
-                page.remove_listener("request", current_handler)
-
-            async def log_request(request):
-                nonlocal authorizev3
-                if "authorizev3" in request.headers:
-                    authorizev3 = request.headers["authorizev3"]
-
-            current_handler = log_request
-            page.on("request", current_handler)
 
             target_text = f"ИНН {inn['inn']}"
 
@@ -258,6 +252,8 @@ async def get_and_store_cookies(page=None, conn=None):
                 await supplier_radio_label.wait_for(state="visible", timeout=5000)
                 await asyncio.sleep(5)
                 await supplier_radio_label.click()
+                await asyncio.sleep(3)
+                await page.reload()
             except PlaywrightTimeoutError:
                 time_now = await get_datetime()
                 logger.warning(f"{time_now} Элемент поставщика '{target_text}' не найден или не появился вовремя")
@@ -270,14 +266,23 @@ async def get_and_store_cookies(page=None, conn=None):
             cookies_str = ";".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies if cookie.get("name", "") in cookies_need)
 
             try:
-                query = """
-                        UPDATE myapp_wblk
-                        SET
-                            cookie = $1,
-                            authorizev3 = $2
-                        WHERE id = $3
-                    """
-                await conn.execute(query, cookies_str, authorizev3, inn["id"])
+                if authorizev3:
+                    query = """
+                            UPDATE myapp_wblk
+                            SET
+                                cookie = $1,
+                                authorizev3 = $2
+                            WHERE id = $3
+                        """
+                    await conn.execute(query, cookies_str, authorizev3, inn["id"])
+                else:
+                    query = """
+                            UPDATE myapp_wblk
+                            SET
+                                cookie = $1
+                            WHERE id = $2
+                            """
+                    await conn.execute(query, cookies_str, inn["id"])
             except Exception as e:
                 raise Exception(f"Ошибка обновления кукков в лк. Error: {e}")
 
