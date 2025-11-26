@@ -1703,7 +1703,7 @@ async def normalize_cookies(cookies: str)->dict:
         cookie = cookies.split(";")
         correct_cookie = {i.split("=")[0]: i.split("=")[1] for i in cookie}
     except Exception as e:
-        raise Exception(f"Ошибка нормализации кукков: {e}")
+        raise Exception(f"Ошибка нормализации кукков: {e}. Cookie: {cookie}")
 
     return correct_cookie
 
