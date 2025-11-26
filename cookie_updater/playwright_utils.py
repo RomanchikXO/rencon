@@ -132,14 +132,15 @@ async def close_any_popup(page):
     return False
 
 
-async def get_and_store_cookies(page=None):
+async def get_and_store_cookies(page=None, conn=None):
     """Основная функция получения и сохранения cookies"""
 
-    conn = await async_connect_to_database()
-    if not conn:
-        time_now = await get_datetime()
-        logger.warning(f"{time_now} Ошибка подключения к БД в get_and_store_cookies")
-        return
+    if conn is None:
+        conn = await async_connect_to_database()
+        if not conn:
+            time_now = await get_datetime()
+            logger.warning(f"{time_now} Ошибка подключения к БД в get_and_store_cookies")
+            return
 
     if not page:
         playwright = await async_playwright().start()
@@ -282,7 +283,7 @@ async def get_and_store_cookies(page=None):
 
             await asyncio.sleep(300)
             await page.reload()
-            await get_and_store_cookies(page)
+            await get_and_store_cookies(page, conn)
     except Exception as e:
         time_now = await get_datetime()
         logger.error(f"{time_now} Ошибка: {e}")
