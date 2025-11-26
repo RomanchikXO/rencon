@@ -191,42 +191,32 @@ class Stocks(models.Model):
 
 class Orders(models.Model):
     lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1) #lk_id в бд
-    date = models.DateTimeField() #Дата и время заказа. Это поле соответствует параметру dateFrom в запросе, если параметр flag=1. Если часовой пояс не указан, то берётся Московское время (UTC+3)
-    lastchangedate = models.DateTimeField() #Дата и время обновления информации в сервисе. Это поле соответствует параметру dateFrom в запросе, если параметр flag=0 или не указан. Московское время (UTC+3).
-    warehousename = models.CharField(max_length=255) #Склад отгрузки
-    warehousetype = models.CharField(max_length=255) #Тип склада хранения товаров
-    countryname = models.CharField(max_length=255) #Страна
-    oblastokrugname = models.CharField(max_length=255, null=True) #Округ
-    regionname = models.CharField(max_length=255, null=True) #Регион
+    date = models.DateTimeField() #Дата и время заказа.
+    brand = models.DateTimeField() #Брэнд
+    thing = models.CharField(max_length=255, null=True) # Предмет
+    season = models.CharField(max_length=255, null=True) # Сезон
+    collection = models.CharField(max_length=255, null=True) # Коллекция
+    name = models.CharField(max_length=255, null=True) # Наименование
     supplierarticle = models.CharField(max_length=255) #Артикул продавца
     nmid = models.IntegerField() #Артикул WB
     barcode = models.BigIntegerField(null=True) #Баркод
-    category = models.CharField(max_length=255) #Категория
-    subject = models.CharField(max_length=255) #Предмет
-    brand = models.CharField(max_length=255) #
-    techsize = models.CharField(max_length=255, null=True) #Размер товара
-    incomeid = models.IntegerField() #Номер поставки
-    issupply = models.BooleanField() #Договор поставки
-    isrealization = models.BooleanField() #Договор реализации
-    totalprice = models.IntegerField() #Цена без скидок
-    discountpercent = models.IntegerField() #Скидка продавца
-    spp = models.IntegerField() #Скидка WB
-    finishedprice = models.FloatField() #Цена с учетом всех скидок, кроме суммы по WB Кошельку
-    pricewithdisc = models.FloatField() #Цена со скидкой продавца (= totalPrice * (1 - discountPercent/100))
-    iscancel = models.BooleanField() #Отмена заказа. true - заказ отменен
-    canceldate = models.DateTimeField() #Дата и время отмены заказа. Если заказ не был отменен, то "0001-01-01T00:00:00".Если часовой пояс не указан, то берётся Московское время UTC+3.
-    sticker = models.CharField(max_length=255) #ID стикера
-    gnumber = models.CharField() #Номер заказа
-    srid = models.CharField(max_length=255) #Уникальный ID заказа. Примечание для использующих API Маркетплейс: srid равен rid в ответах методов сборочных заданий.
+    techsize = models.CharField(max_length=255, null=True) # Размер товара
+    contract = models.CharField(max_length=255, null=True, blank=True) # Контракт
+    warehouse = models.CharField(max_length=255, null=True) # Склад
+    ord_count = models.IntegerField() # Кол-во заказов, шт
+    ord_sum = models.FloatField() # Сумма заказов
+    redeem = models.IntegerField() # Выкупили, шт
+    to_transfer = models.FloatField() # К перечислению
+    quantity = models.IntegerField() # Текущий остаток
     updated_at = models.DateTimeField(auto_now_add=True, null=True)  # время обновления в бд в UTC
 
     class Meta:
-        unique_together = ['nmid', 'lk', 'srid']
+        unique_together = ['barcode', 'date', 'lk', 'warehouse']
         verbose_name = "Заказ WB"
         verbose_name_plural = "Заказы WB"
 
     def __str__(self):
-        return f"{self.supplierarticle} | {self.techsize} | {self.brand} | Заказ: {self.gnumber}"
+        return f"{self.supplierarticle} | {self.techsize} | {self.brand}"
 
 
 class CeleryLog(models.Model):
