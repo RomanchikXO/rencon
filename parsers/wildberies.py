@@ -1785,7 +1785,7 @@ async def download_orders_from_wb_lk():
                 raise
             try:
                 request = "SELECT cookie, authorizev3, name FROM myapp_wblk where id = $1"
-                all_fields = await conn.fetch(request, lk_id)
+                all_fields = await conn.fetch(request, int(lk_id))
                 all_fields = all_fields[0]
                 result = {
                     "cookie": all_fields["cookie"], "authorizev3": all_fields["authorizev3"],
