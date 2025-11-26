@@ -21,7 +21,6 @@ import logging
 import io
 import csv
 from context_logger import ContextLogger
-from itertools import chain
 from myapp.models import Price, Adverts
 
 logger = ContextLogger(logging.getLogger("parsers"))
@@ -1817,6 +1816,7 @@ async def process_orders_from_lk(lk: dict, conn):
         )
         if not response or not response.get("data"):
             logger.error(f"Ошибка создания отчета. Дата: {_date}. ЛК: {lk['name']}")
+            r.set(f"create_{lk['id']}_{_date}_{get_uuid()}", "")
             continue
 
         try:

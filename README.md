@@ -36,6 +36,7 @@ docker-compose up --build -d
 
 # Подключиться к БД 
 # docker exec -it postgres psql -U romandikarev rencon
+# docker compose exec redis redis-cli
 
 
 # Время в локах смотрим в message 
