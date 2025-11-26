@@ -1703,7 +1703,7 @@ async def normalize_cookies(cookies: str)->dict:
         cookie = cookies.split(";")
         correct_cookie = {i.split("=")[0]: i.split("=")[1] for i in cookie}
     except Exception as e:
-        raise Exception(f"Ошибка нормализации кукков: {e}. Cookie: {cookie}")
+        raise Exception(f"Ошибка нормализации кукков: {e}. Cookie: {cookie}. Параметры: {cookies}")
 
     return correct_cookie
 
@@ -1744,7 +1744,7 @@ async def get_orders_from_wb_lk():
 async def process_orders_from_lk(lk: dict, conn):
     """генерируем отчеты"""
 
-    if not lk["cookie"] or not lk["authorizev3"]:
+    if not (lk["cookie"] and lk["cookie"].strip()) or not (lk["authorizev3"] and lk["authorizev3"].strip()):
         logger.info(f"Отсутствуют Кукки или authorizev3 для кабинета {lk['name']}")
         return
 
