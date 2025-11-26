@@ -206,7 +206,7 @@ class Orders(models.Model):
     ord_count = models.IntegerField(null=True, blank=True) # Кол-во заказов, шт
     ord_sum = models.FloatField(null=True, blank=True) # Сумма заказов
     redeem = models.IntegerField(null=True, blank=True) # Выкупили, шт
-    to_transfer = models.FloatField() # К перечислению
+    to_transfer = models.FloatField(null=True, blank=True) # К перечислению
     quantity = models.IntegerField(null=True, blank=True) # Текущий остаток
     updated_at = models.DateTimeField(auto_now_add=True, null=True)  # время обновления в бд в UTC
 
