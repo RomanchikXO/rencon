@@ -71,20 +71,20 @@ def generate_random_user_agent() -> str:
     return f"Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) {browser}/{version} Safari/537.36"
 
 
-def get_data(method: str, url: str, response_type="json", **kwargs):
+async def get_data(method: str, url: str, response_type="json", **kwargs):
     attempt, max_attemps = 0, 4
     if headers := kwargs.pop("headers"):
         headers["User-Agent"] = generate_random_user_agent()
     while attempt <= max_attemps:
-        time.sleep(5)
+        await asyncio.sleep(5)
         # proxies = {"http://": f"http://{random.choice(proxies_all)}"}
         timeout = httpx.Timeout(10.0, connect=5.0)
         try:
-            with httpx.Client(
+            async with httpx.AsyncClient(
                 timeout=timeout,
                 # proxies=proxies
             ) as client:
-                response = client.request(
+                response = await client.request(
                     method.upper(), url, headers=headers, **kwargs
                 )
             if response.status_code == 404:
@@ -98,7 +98,7 @@ def get_data(method: str, url: str, response_type="json", **kwargs):
         except:
             attempt += 1
             logger.info(f"Can't get data, retry {attempt}")
-            time.sleep(attempt * 2)
+            await asyncio.sleep(attempt * 2)
     logger.error(f"Can't get data, URl: {url}")
 
 
