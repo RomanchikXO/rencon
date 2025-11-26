@@ -192,7 +192,7 @@ class Stocks(models.Model):
 class Orders(models.Model):
     lk = models.ForeignKey(WbLk, on_delete=models.CASCADE, default=1) #lk_id в бд
     date = models.DateTimeField() #Дата и время заказа.
-    brand = models.DateTimeField() #Брэнд
+    brand = models.CharField(max_length=255, null=True) #Брэнд
     thing = models.CharField(max_length=255, null=True) # Предмет
     season = models.CharField(max_length=255, null=True) # Сезон
     collection = models.CharField(max_length=255, null=True) # Коллекция
