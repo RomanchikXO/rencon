@@ -1802,15 +1802,15 @@ async def download_orders_from_wb_lk():
                 await conn.close()
 
         cookies = {
-            "wbx-validation-key": cookie["cookie"]["wbx-validation-key"],
-            '_wbauid': cookie["cookie"]["_wbauid"],
-            'x-supplier-id-external': cookie["cookie"]["x-supplier-id-external"],
+            "wbx-validation-key": cookies_by_id[lk_id]["cookie"]["wbx-validation-key"],
+            '_wbauid': cookies_by_id[lk_id]["cookie"]["_wbauid"],
+            'x-supplier-id-external': cookies_by_id[lk_id]["cookie"]["x-supplier-id-external"],
         }
 
         headers = {
             'accept': '*/*',
             'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
-            'authorizev3': cookie["authorizev3"],
+            'authorizev3': cookies_by_id[lk_id]["authorizev3"],
             'content-type': 'application/json',
             'dnt': '1',
             'origin': 'https://seller.wildberries.ru',
