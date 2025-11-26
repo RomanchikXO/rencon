@@ -34,6 +34,9 @@ docker-compose up --build -d
 # ssh -L 5555:localhost:5555 root@95.215.56.26  
 # http://localhost:5555/
 
+# Подключиться к БД 
+# docker exec -it postgres psql -U romandikarev rencon
+
 
 # Время в локах смотрим в message 
 # При установке времени в тасках - устанавливается время по МСК

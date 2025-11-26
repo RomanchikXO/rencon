@@ -1708,6 +1708,13 @@ async def normalize_cookies(cookies: str)->dict:
     return correct_cookie
 
 
+def is_not_empty(value):
+    """Проверяем не пустая ли строка"""
+    if value is None:
+        return False
+    return bool(value.strip().strip("'").strip('"'))
+
+
 async def get_orders_from_wb_lk():
     """
         Главная функция получения отчет о продажах из ЛК WB
@@ -1744,7 +1751,12 @@ async def get_orders_from_wb_lk():
 async def process_orders_from_lk(lk: dict, conn):
     """генерируем отчеты"""
 
-    if not (lk["cookie"] and lk["cookie"].strip()) or not (lk["authorizev3"] and lk["authorizev3"].strip()):
+    if not all(
+            [
+                is_not_empty(lk["cookie"]),
+                is_not_empty(lk["authorizev3"])
+            ]
+    ):
         logger.info(f"Отсутствуют Кукки или authorizev3 для кабинета {lk['name']}")
         return
 
