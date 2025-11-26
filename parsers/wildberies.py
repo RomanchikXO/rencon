@@ -26,7 +26,7 @@ from myapp.models import Price, Adverts
 
 logger = ContextLogger(logging.getLogger("parsers"))
 
-r = redis.Redis(host='localhost', port=6381, db=0)
+r = redis.Redis(host='redis_cache', port=6379, db=0)
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 6.4; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2225.0 Safari/537.36",
