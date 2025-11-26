@@ -211,7 +211,7 @@ class Orders(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True, null=True)  # время обновления в бд в UTC
 
     class Meta:
-        unique_together = ['barcode', 'date', 'lk', 'warehouse']
+        unique_together = ['barcode', 'date', 'lk']
         verbose_name = "Заказ WB"
         verbose_name_plural = "Заказы WB"
 
