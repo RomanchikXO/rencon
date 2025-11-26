@@ -748,12 +748,16 @@ async def upload_save_data_to_google(mode):
 
     sloi = await get_sloy()
 
-    query_inns = select(
-        wblk_table.c.inn,
-        wblk_table.c.name
-    )
-    rows = await database.fetch_all(query_inns)
-    inns = {int(row["inn"]): row["name"] for row in rows}
+    try:
+        query_inns = select(
+            wblk_table.c.inn,
+            wblk_table.c.name
+        )
+        rows = await database.fetch_all(query_inns)
+        inns = {int(row["inn"]): row["name"] for row in rows}
+    except Exception as e:
+        logger.error(f"Ошибка получения данных ИНН")
+        raise
 
     if mode == "Dima":
         date_from_str = await get_first_day_last_month()
