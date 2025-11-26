@@ -1784,7 +1784,7 @@ async def download_orders_from_wb_lk():
                 logger.error(f"Ошибка подключения к БД")
                 raise
             try:
-                request = "SELECT cookie, authorizev3, name FROM myapp_wblk where lk_id = $1"
+                request = "SELECT cookie, authorizev3, name FROM myapp_wblk where id = $1"
                 all_fields = await conn.fetch(request, lk_id)
                 all_fields = all_fields[0]
                 result = {
