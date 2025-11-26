@@ -1793,7 +1793,7 @@ async def download_orders_from_wb_lk():
                 }
 
                 cookies_by_id[lk_id] = {
-                    "cookie": normalize_cookies(result["cookie"]),
+                    "cookie": await normalize_cookies(result["cookie"]),
                     "authorizev3": result["authorizev3"]
                 }
             except Exception as e:
