@@ -1875,7 +1875,7 @@ async def load_to_db_report():
                     # поготовили данные для загрузки в бд
                     load_data.append(
                         (int(lk_id), datetime.strptime(_date, "%d.%m.%y"), row[0], row[1], row[2], row[3],
-                         row[4], row[5], int(row[6]), int(row[7]), row[8], row[9], row[10], int(row[11]),
+                         row[4], row[5], int(row[6]), int(row[7]) if row[7] else 0, row[8], row[9], row[10], int(row[11]),
                          float(row[12]), int(row[13]), float(row[14]), int(row[15]), datetime.now())
                     )
             except ValueError as e:
