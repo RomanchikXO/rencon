@@ -1878,6 +1878,8 @@ async def load_to_db_report():
                          row[4], row[5], int(row[6]), int(row[7]), row[8], row[9], row[10], int(row[11]),
                          float(row[12]), int(row[13]), float(row[14]), int(row[15]), datetime.now())
                     )
+            except ValueError as e:
+                raise Exception(f"Ошибка подготовки данных для загрузки в БД  для {lk_id}: {e}. Строка: {row}")
             except Exception as e:
                 raise Exception(f"Ошибка подготовки данных для загрузки в БД  для {lk_id}: {e}")
 
