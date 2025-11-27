@@ -1,6 +1,6 @@
 import json
-from collections import defaultdict
-from typing import Dict, Union, Optional, List
+from typing import Optional, List
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import MetaData, Table, select, create_engine, func, cast, String, text
@@ -506,7 +506,12 @@ async def orders_endpoint(
         for row in stats_rows:
             r = dict(row._mapping)
             if isinstance(r["date"], datetime):
-                r["date_wb"] = datetime.fromisoformat(str(r["date"])).date()
+                # конвертация UTC → MSK
+                dt_utc = r["date"]
+                dt_msk = dt_utc.astimezone(ZoneInfo("Europe/Moscow"))
+                r["date"] = dt_msk
+                r["date_wb"] = dt_msk.date()
+
             r["color"] = r["color"].strip('"') if r["color"] else 'Цвет не указан'
             all_data.append(r)
 
