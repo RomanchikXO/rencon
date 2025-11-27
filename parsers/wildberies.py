@@ -1868,7 +1868,7 @@ async def load_to_db_report():
 
             try:
                 load_data = []
-                for row in ws.iter_rows(min_row=2, values_only=True):
+                for row in ws.iter_rows(min_row=3, values_only=True):
                     # поготовили данные для загрузки в бд
                     load_data.append(
                         (int(lk_id), datetime.strptime(_date, "%d.%m.%y"), row[0], row[1], row[2], row[3],
