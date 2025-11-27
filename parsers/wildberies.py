@@ -1840,7 +1840,7 @@ async def download_orders_from_wb_lk():
             logger.error(f"Ошибка скачивания отчета. Дата: {_date}. ЛК: {lk_id}")
             continue
         else:
-            r.set(f"LoadToBase_{lk_id}_{_date}_{get_uuid()}", response["data"])
+            r.set(f"LoadToBase_{lk_id}_{_date}_{val}", response["data"])
             r.delete(key)
 
 
@@ -1853,12 +1853,59 @@ async def load_to_db_report():
     except Exception as e:
         logger.error(f"Ошибка получения base64 данных: {e}")
 
-    for key, data in result.items():
-        _, lk_id, _date, _uuid = key.split("_")
+    conn = await async_connect_to_database()
+    if not conn:
+        logger.error("Ошибка подключения к БД")
+        raise
 
-        decoded = base64.b64decode(data)
-        wb = load_workbook(filename=BytesIO(decoded))
-        ws = wb.active
+    try:
+        for key, data in result.items():
+            _, lk_id, _date, val = key.split("_")
 
-        for row in ws.iter_rows(values_only=True):
-            print(row)
+            decoded = base64.b64decode(data)
+            wb = load_workbook(filename=BytesIO(decoded))
+            ws = wb.active
+
+            try:
+                load_data = []
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    # поготовили данные для загрузки в бд
+                    load_data.append(
+                        (int(lk_id), datetime.strptime(_date, "%d.%m.%y"), row[0], row[1], row[2], row[3],
+                         row[4], row[5], int(row[6]), int(row[7]), row[8], row[9], row[10], int(row[11]),
+                         float(row[12]), int(row[13]), float(row[14]), int(row[15]), datetime.now())
+                    )
+            except Exception as e:
+                raise Exception(f"Ошибка подготовки данных для загрузки в БД  для {lk_id}: {e}")
+
+            try:
+                query = f"""
+                        INSERT INTO myapp_orders (
+                            "lk_id", "date", "brand", "thing", "season", "collection", "name", "supplierarticle", 
+                            "nmid", "barcode", "techsize", "contract", "warehouse", "ord_count", "ord_sum",
+                            "redeem", "to_transfer", "quantity", "updated_at"
+                        )
+                        VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+                        )
+                        ON CONFLICT ("barcode", "date", "lk", "warehouse") DO UPDATE SET
+                            "ord_count" = EXCLUDED."ord_count",
+                            "ord_sum" = EXCLUDED."ord_sum",
+                            "redeem" = EXCLUDED."redeem",
+                            "to_transfer" = EXCLUDED."to_transfer",
+                            "quantity" = EXCLUDED."quantity";
+                    """
+                await insert_in_chunks(conn, query, load_data, chunk_size=1000)
+            except Exception as e:
+                raise Exception(f"Ошибка загрузки данных для лк {lk_id} на дату {_date}: {e}")
+
+            # загрузили в бд
+
+            # удалили ключ
+            r.delete(key)
+            # поставили задачу на удаление из ЛК ВБ
+            r.set(f"ToDelete_{val}", val)
+    except Exception as e:
+        logger.error(e)
+    finally:
+        await conn.close()
