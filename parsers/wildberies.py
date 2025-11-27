@@ -29,10 +29,42 @@ logger = ContextLogger(logging.getLogger("parsers"))
 
 r = redis.Redis(host='redis_cache', port=6379, db=0)
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 6.4; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2225.0 Safari/537.36",
-    "Content-Type": "application/json; charset=UTF-8",
-}
+
+
+async def get_cookies_headers(
+        wbx: str,
+        _wbauid: str,
+        supplier: str,
+        authorizev3: str
+)-> tuple[dict, dict]:
+    """Получить кукки и заголовки"""
+
+    cookies = {
+        "wbx-validation-key": wbx,
+        '_wbauid': _wbauid,
+        'x-supplier-id-external': supplier,
+    }
+
+    headers = {
+        'accept': '*/*',
+        'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
+        'authorizev3': authorizev3,
+        'content-type': 'application/json',
+        'dnt': '1',
+        'origin': 'https://seller.wildberries.ru',
+        'priority': 'u=1, i',
+        'referer': 'https://seller.wildberries.ru/',
+        'root-version': 'v1.68.1',
+        'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "YaBrowser";v="25.10", "Yowser";v="2.5"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
+    }
+    return cookies, headers
+
 
 async def get_time_str(format: str, reduce: int = None, increase: int = None):
     """
@@ -1700,37 +1732,19 @@ async def process_orders_from_lk(lk: dict, conn):
     except Exception as e:
         raise Exception(e)
 
-    cookies = {
-        "wbx-validation-key": cookie["wbx-validation-key"],
-        '_wbauid': cookie["_wbauid"],
-        'x-supplier-id-external': cookie["x-supplier-id-external"],
-    }
-
-    headers = {
-        'accept': '*/*',
-        'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
-        'authorizev3': lk["authorizev3"],
-        'content-type': 'application/json',
-        'dnt': '1',
-        'origin': 'https://seller.wildberries.ru',
-        'priority': 'u=1, i',
-        'referer': 'https://seller.wildberries.ru/',
-        'root-version': 'v1.68.1',
-        'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "YaBrowser";v="25.10", "Yowser";v="2.5"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
-    }
+    cookies, headers = await get_cookies_headers(
+        cookie["wbx-validation-key"],
+        cookie["_wbauid"],
+        cookie["x-supplier-id-external"],
+        lk["authorizev3"]
+    )
 
     request = "SELECT id FROM myapp_orders WHERE lk_id = $1 LIMIT 1"
     all_fields = await conn.fetch(request, lk["id"])
     if all_fields:
         reduce = 14
     else:
-        reduce = 1
+        reduce = 61
 
     for day in range(reduce, 0, -1):
         _date = await get_time_str(format="%d.%m.%y", reduce=day)
@@ -1768,10 +1782,16 @@ async def download_orders_from_wb_lk():
         result = {key.decode(): r.get(key).decode() for key in keys}
     except Exception as e:
         logger.error(f"Ошибка получения загрузочных ключей: {e}")
+        raise
 
     if not result:
         logger.info(f"Загрузочные ключи отсутствуют")
         return
+
+    conn = await async_connect_to_database()
+    if not conn:
+        logger.error(f"Ошибка подключения к БД")
+        raise
 
     cookies_by_id = {}
 
@@ -1779,10 +1799,6 @@ async def download_orders_from_wb_lk():
         _, lk_id, _date, _uuid = key.split("_")
 
         if not (cookie := cookies_by_id.get(lk_id)):
-            conn = await async_connect_to_database()
-            if not conn:
-                logger.error(f"Ошибка подключения к БД")
-                raise
             try:
                 request = "SELECT cookie, authorizev3, name FROM myapp_wblk where id = $1"
                 all_fields = await conn.fetch(request, int(lk_id))
@@ -1801,30 +1817,12 @@ async def download_orders_from_wb_lk():
             finally:
                 await conn.close()
 
-        cookies = {
-            "wbx-validation-key": cookies_by_id[lk_id]["cookie"]["wbx-validation-key"],
-            '_wbauid': cookies_by_id[lk_id]["cookie"]["_wbauid"],
-            'x-supplier-id-external': cookies_by_id[lk_id]["cookie"]["x-supplier-id-external"],
-        }
-
-        headers = {
-            'accept': '*/*',
-            'accept-language': 'ru,en;q=0.9,pl;q=0.8,ko;q=0.7',
-            'authorizev3': cookies_by_id[lk_id]["authorizev3"],
-            'content-type': 'application/json',
-            'dnt': '1',
-            'origin': 'https://seller.wildberries.ru',
-            'priority': 'u=1, i',
-            'referer': 'https://seller.wildberries.ru/',
-            'root-version': 'v1.68.1',
-            'sec-ch-ua': '"Chromium";v="140", "Not=A?Brand";v="24", "YaBrowser";v="25.10", "Yowser";v="2.5"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-site',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.10.0.0 Safari/537.36',
-        }
+        cookies, headers = await get_cookies_headers(
+            cookies_by_id[lk_id]["cookie"]["wbx-validation-key"],
+            cookies_by_id[lk_id]["cookie"]["_wbauid"],
+            cookies_by_id[lk_id]["cookie"]["x-supplier-id-external"],
+            cookies_by_id[lk_id]["authorizev3"]
+        )
 
         response = await get_data(
             method="GET",
@@ -1852,6 +1850,11 @@ async def load_to_db_report():
         result = {key.decode(): r.get(key).decode() for key in keys}
     except Exception as e:
         logger.error(f"Ошибка получения base64 данных: {e}")
+        raise
+
+    if not result:
+        logger.info(f"base64 данные отсутствуют")
+        return
 
     conn = await async_connect_to_database()
     if not conn:
@@ -1904,8 +1907,74 @@ async def load_to_db_report():
             # удалили ключ
             r.delete(key)
             # поставили задачу на удаление из ЛК ВБ
-            r.set(f"ToDelete_{val}", val)
+            r.set(f"ToDelete_{lk_id}_{_date}", val)
     except Exception as e:
         logger.error(e)
     finally:
         await conn.close()
+
+
+async def delete_report():
+    """Удаляем отчет из ЛК WB и редиса"""
+    try:
+        keys = r.keys("ToDelete_*")
+        result = {key.decode(): r.get(key).decode() for key in keys}
+    except Exception as e:
+        logger.error(f"Ошибка получения ключей удаления: {e}")
+        raise
+
+    if not result:
+        logger.info(f"Ключи удаления отсутствуют")
+        return
+
+    conn = await async_connect_to_database()
+    if not conn:
+        logger.error(f"Ошибка подключения к БД")
+        raise
+
+    cookies_by_id = {}
+
+    for key, val in result.items():
+        _, lk_id, _date = key.split("_")
+
+        if not (cookie := cookies_by_id.get(lk_id)):
+            try:
+                request = "SELECT cookie, authorizev3, name FROM myapp_wblk where id = $1"
+                all_fields = await conn.fetch(request, int(lk_id))
+                all_fields = all_fields[0]
+                result = {
+                    "cookie": all_fields["cookie"], "authorizev3": all_fields["authorizev3"],
+                    "name": all_fields["name"]
+                }
+
+                cookies_by_id[lk_id] = {
+                    "cookie": await normalize_cookies(result["cookie"]),
+                    "authorizev3": result["authorizev3"]
+                }
+            except Exception as e:
+                raise Exception(f"Ошибка получения кукков из БД: {e}")
+            finally:
+                await conn.close()
+
+        cookies, headers = await get_cookies_headers(
+            cookies_by_id[lk_id]["cookie"]["wbx-validation-key"],
+            cookies_by_id[lk_id]["cookie"]["_wbauid"],
+            cookies_by_id[lk_id]["cookie"]["x-supplier-id-external"],
+            cookies_by_id[lk_id]["authorizev3"]
+        )
+
+        response = await get_data(
+            method="DELETE",
+            url=f"https://seller-weekly-report.wildberries.ru/ns/reportsviewer/analytics-back/api/report/supplier-goods/order/{val}",
+            cookies=cookies,
+            headers=headers,
+        )
+
+        delay = random.uniform(1.7, 3.2)
+        await asyncio.sleep(delay)
+
+        if not response or response["error"] != False:
+            logger.error(f"Ошибка удаления отчета. Дата: {_date}. ЛК: {lk_id}")
+            continue
+        else:
+            r.delete(key)
