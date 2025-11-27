@@ -1893,7 +1893,7 @@ async def load_to_db_report():
                         VALUES (
                             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
                         )
-                        ON CONFLICT ("barcode", "date", "lk_id", "warehouse", "nmid") DO UPDATE SET
+                        ON CONFLICT ("techsize", "date", "lk_id", "warehouse", "nmid") DO UPDATE SET
                             "ord_count" = EXCLUDED."ord_count",
                             "ord_sum" = EXCLUDED."ord_sum",
                             "redeem" = EXCLUDED."redeem",
