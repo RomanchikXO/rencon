@@ -8,7 +8,7 @@ from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_ag
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
-                                     upload_products_stat_to_google, upload_fin_report_to_google,
+                                     upload_products_orders_to_google, upload_fin_report_to_google,
                                      upload_save_data_to_google)
 
 import logging
@@ -171,10 +171,10 @@ def upload_salesreport_to_google_task(mode="Dima"):
     logger.info(f"Salesreport в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @shared_task
-@with_task_context("upload_products_stat_to_google_task")
-def upload_products_stat_to_google_task():
+@with_task_context("upload_products_orders_to_google_task")
+def upload_products_orders_to_google_task():
     logger.info("🟢 Загрузка products_stat в гугл табл")
-    asyncio.run(upload_products_stat_to_google())
+    asyncio.run(upload_products_orders_to_google())
     logger.info("Products_stat в гугл табл ЗАГРУЖЕНО")
 
 
