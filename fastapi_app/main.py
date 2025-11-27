@@ -28,6 +28,7 @@ metadata.reflect(bind=sync_engine)
 
 
 products_table = metadata.tables.get("myapp_productsstat")
+orders_table = metadata.tables.get("myapp_orders")
 nmids_table = metadata.tables.get("myapp_nmids")
 wblk_table = metadata.tables.get("myapp_wblk")
 stocks_table = metadata.tables.get("myapp_stocks")
@@ -37,7 +38,7 @@ findata_table = metadata.tables.get("myapp_findata")
 savedata_table = metadata.tables.get("myapp_savedata")
 sales_reg_table = metadata.tables.get("myapp_regionsales")
 
-if None in [products_table, nmids_table, wblk_table, stocks_table, advstat_table, findata_table, savedata_table,
+if None in [products_table, orders_table, nmids_table, wblk_table, stocks_table, advstat_table, findata_table, savedata_table,
             sales_reg_table]:
     logger.error("Одна из таблиц (ProductsStat, nmids, WbLk, Stocks) не найдена.")
     raise RuntimeError()
@@ -401,6 +402,111 @@ async def products_stat_endpoint(
             r = dict(row._mapping)
             if isinstance(r["date_wb"], datetime):
                 r["date_wb"] = datetime.fromisoformat(str(r["date_wb"])).date()
+            r["color"] = r["color"].strip('"') if r["color"] else 'Цвет не указан'
+            all_data.append(r)
+
+        return all_data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/orders/",
+    response_model=List[ProductStatResponse],
+    summary="Получить информацию о заказах",
+    description="Возвращает суммарную информацию о заказах по NMID: количество и сумма в рублях. "
+                "Можно фильтровать по дате, артикулам и цветам."
+)
+async def orders_endpoint(
+        payload: ProductsStatRequest,
+        token: str = Depends(verify_token)
+):
+
+    try:
+        # Парсим даты
+        date_from = parse_date(payload.date_from).date() if payload.date_from else None
+        date_to = parse_date(payload.date_to).date() if payload.date_to else None
+
+        # Получаем lk
+        query_lk = select(wblk_table).where(wblk_table.c.inn == payload.inn)
+        lk_row = await database.fetch_one(query_lk)
+        if not lk_row:
+            raise HTTPException(status_code=404, detail="WbLk не найден")
+
+        lk_id = lk_row["id"]
+
+        # Получаем список nmid по lk
+        query_nmids = select(
+            nmids_table.c.nmid,
+            nmids_table.c.characteristics
+        ).where(nmids_table.c.lk_id == lk_id)
+
+        if payload.articles:
+            query_nmids = query_nmids.where(nmids_table.c.nmid.in_(payload.articles))
+
+        nmids_rows = await database.fetch_all(query_nmids)
+
+        nmids_list = []
+
+        for row in nmids_rows:
+            nmid = row["nmid"]
+            if payload.colors:
+                characteristics = row["characteristics"]  # JSONField из Django
+                if characteristics is None:
+                    continue
+
+                try:
+                    parsed = (
+                        characteristics
+                        if isinstance(characteristics, list)
+                        else json.loads(characteristics)
+                    )
+                except Exception:
+                    continue
+
+                color_entry = next(
+                    (item for item in parsed if item.get("id") == 14177449), None
+                )
+                if not color_entry:
+                    continue
+
+                value = color_entry.get("value")
+                if not value or not isinstance(value, list):
+                    continue
+
+                color_value = value[0].lower()  # берём первое значение
+                if color_value in [c.lower() for c in payload.colors]:
+                    nmids_list.append(nmid)
+            else:
+                nmids_list.append(nmid)
+
+        if not nmids_list:
+            return []
+
+        # Фильтруем ProductsStat
+        query_stats = (select(
+            nmids_table.c.vendorcode,
+            orders_table.c.nmid,
+            orders_table.c.date,
+            orders_table.c.ord_sum,
+            orders_table.c.ord_count,
+            color_expr
+        )
+       .join(nmids_table, nmids_table.c.nmid == orders_table.c.nmid)
+       .where(orders_table.c.nmid.in_(nmids_list)))
+
+        if date_from:
+            query_stats = query_stats.where(orders_table.c.date >= date_from)
+        if date_to:
+            query_stats = query_stats.where(orders_table.c.date <= date_to)
+
+        stats_rows = await database.fetch_all(query_stats)
+        all_data = []
+        for row in stats_rows:
+            r = dict(row._mapping)
+            if isinstance(r["date"], datetime):
+                r["date_wb"] = datetime.fromisoformat(str(r["date"])).date()
             r["color"] = r["color"].strip('"') if r["color"] else 'Цвет не указан'
             all_data.append(r)
 
