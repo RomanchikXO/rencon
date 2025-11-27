@@ -2,7 +2,7 @@ import asyncio
 
 from fastapi_app.main import (wblk_table, get_dimensions, get_adv_conversion, ProductsStatRequest, get_adv_cost,
                               get_adv_reg_sales, ProductsQuantRequest, products_quantity_endpoint,
-                              products_stat_endpoint, fin_report_endpoint, FinReportRequest)
+                              orders_endpoint, fin_report_endpoint, FinReportRequest)
 from sqlalchemy import select
 from loader import BEARER
 from context_logger import ContextLogger
@@ -503,7 +503,7 @@ async def upload_ostatki_to_google(mode):
 
 
 @with_db_connection
-async def upload_products_stat_to_google():
+async def upload_products_orders_to_google():
     url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1628086389#gid=1628086389"
     name = "ProductsStat"
 
@@ -524,7 +524,7 @@ async def upload_products_stat_to_google():
 
     # Запускаем все запросы параллельно
     results_list = await asyncio.gather(
-        *[products_stat_endpoint(payload=payload, token=BEARER) for payload in payloads]
+        *[orders_endpoint(payload=payload, token=BEARER) for payload in payloads]
     )
 
     # Создаем словарь: ключ — inn, значение — результат
@@ -541,10 +541,10 @@ async def upload_products_stat_to_google():
                 inn,
                 stat["vendorcode"],
                 stat["nmid"],
-                stat["date_wb"].strftime("%d.%m.%Y"),
+                stat["date"].strftime("%d.%m.%Y"),
                 stat["color"],
-                stat["ordersSumRub"],
-                stat["ordersCount"],
+                stat["ord_sum"],
+                stat["ord_count"],
                 sloi.get(stat["vendorcode"], "Слой не обнаружен")
             ]
             for inn, stats_list in results_by_inn.items()
