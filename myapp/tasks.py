@@ -4,7 +4,7 @@ import asyncio
 from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_age_by_period,
                                 get_stat_products, get_advs, get_advs_stat, get_fin_report,
                                 make_and_get_save_report, get_region_sales, get_time_str, get_orders_from_wb_lk,
-                                download_orders_from_wb_lk, load_to_db_report)
+                                download_orders_from_wb_lk, load_to_db_report, delete_report)
 from parsers.my_sklad import get_and_save_mysklad_data, update_google_table_mysklad
 from tasks.drop_to_goo_table import (upload_dimensions_to_google, upload_advconversion_to_google,
                                      upload_advcost_to_google, upload_salesreport_to_google, upload_ostatki_to_google,
@@ -25,6 +25,14 @@ def get_time_str_task():
     a = asyncio.run(get_time_str(format="%d.%m.%y.%H.%M.%S"))
 
     logger.info(f"Конец задачи {a}")
+
+
+@shared_task
+@with_task_context("delete_report")
+def delete_report_task():
+    logger.info("🟢 Удаляем отчеты заказов из ЛК WB")
+    asyncio.run(delete_report())
+    logger.info(f"Удаление отчетов из ЛК WB завершено")
 
 
 @shared_task
