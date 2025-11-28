@@ -1140,10 +1140,6 @@ async def get_advs_stat():
     logger.info(f"Инициализировано {len(unique_tokens)} уникальных токенов для rate limiting")
 
     async def get_data_advs(cab):
-        conn = await async_connect_to_database()
-        if not conn:
-            logger.error(f"Ошибка подключения к БД в {cab['name']}")
-            raise
         try:
             token = cab["token"]
 
@@ -1279,7 +1275,8 @@ async def get_advs_stat():
                                     "sum_price" = EXCLUDED."sum_price",
                                     "views" = EXCLUDED."views";
                             """
-                            await conn.executemany(query, data_for_upload)
+                            async with async_connect_to_database() as conn:
+                                await conn.executemany(query, data_for_upload)
                             # logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}, батч {batch_num}")
                         except Exception as e:
                             logger.error(f"Ошибка обновления данных для {cab['name']}, батч {batch_num}: {e}")
@@ -1290,8 +1287,6 @@ async def get_advs_stat():
         except Exception as e:
             logger.error(f"Ошибка в get_data_advs для {cab['name']}: {e}")
             raise
-        finally:
-            await conn.close()
 
     # Запускаем все кабинеты параллельно
     tasks = [get_data_advs(cab) for cab in cabinets]
