@@ -1275,8 +1275,12 @@ async def get_advs_stat():
                                     "sum_price" = EXCLUDED."sum_price",
                                     "views" = EXCLUDED."views";
                             """
-                            async with async_connect_to_database() as conn:
+
+                            conn = await async_connect_to_database()
+                            try:
                                 await conn.executemany(query, data_for_upload)
+                            finally:
+                                await conn.close()
                             # logger.info(f"Загружено {len(data_for_upload)} записей для {cab['name']}, батч {batch_num}")
                         except Exception as e:
                             logger.error(f"Ошибка обновления данных для {cab['name']}, батч {batch_num}: {e}")
