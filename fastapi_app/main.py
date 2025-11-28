@@ -919,13 +919,19 @@ async def get_adv_reg_sales(
             rub = i["saleInvoiceCostPrice"]
             sht = i["saleItemInvoiceQty"]
 
+            if isinstance(i["date_wb"], datetime):
+                # конвертация UTC → MSK
+                dt_utc = i["date_wb"]
+                dt_msk = dt_utc.astimezone(ZoneInfo("Europe/Moscow"))
+                i["date_wb"] = dt_msk.date()
+
             all_data.append(dict(
                 vendorcode=vendorcode,
                 nmid=nmid,
                 rub=rub,
                 sht=sht,
                 color=color,
-                date_wb=datetime.fromisoformat(str(i["date_wb"])).date(),
+                date_wb=i["date_wb"],
             ))
 
 
