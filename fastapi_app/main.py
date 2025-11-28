@@ -910,7 +910,7 @@ async def get_adv_reg_sales(
         art_per_day = [dict(row._mapping) for row in stats_rows]
 
         all_data = []
-        for index, i in enumerate(art_per_day):
+        for i in art_per_day:
             color = i["color"].strip('"').lower() if i.get("color") else 'Цвет не указан'
             if colors_lower and color not in colors_lower:
                 continue
@@ -923,9 +923,6 @@ async def get_adv_reg_sales(
             dt_utc = i["date_wb"]
             dt_msk = dt_utc.astimezone(ZoneInfo("Europe/Moscow"))
             i["date_wb"] = dt_msk.date()
-
-            if index == 0:
-                logger.info(f"{dt_utc}, {i['date_wb']}")
 
             all_data.append(dict(
                 vendorcode=vendorcode,
