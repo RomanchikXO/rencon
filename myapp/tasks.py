@@ -31,7 +31,8 @@ def get_time_str_task():
 @with_task_context("delete_report")
 def delete_report_task():
     logger.info("🟢 Удаляем отчеты заказов из ЛК WB")
-    asyncio.run(delete_report())
+    from asgiref.sync import async_to_sync
+    async_to_sync(delete_report)()
     logger.info(f"Удаление отчетов из ЛК WB завершено")
 
 
