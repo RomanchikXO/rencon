@@ -51,8 +51,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'myapp.apps.MyappConfig',
-    'django_celery_beat',
     'main.apps.MainConfig',
+    'django_q'
 ]
 
 
@@ -67,12 +67,20 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'django_app.urls'
-CELERY_BROKER_URL = 'redis://redis:6379/0'
-CELERY_ENABLE_UTC = True
-CELERY_TIMEZONE = 'Europe/Moscow'
-
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
-
+Q_CLUSTER = {
+    'name': 'pearhome',
+    'workers': 8,
+    'recycle': 500,
+    'timeout': 60,
+    'queue_limit': 50,
+    'bulk': 10,
+    # Используем Redis как брокер заданий (контейнер redis из docker-compose)
+    'redis': {
+        'host': 'redis',
+        'port': 6379,
+        'db': 0,
+    },
+}
 
 TEMPLATES = [
     {

@@ -1,3 +1,5 @@
-from .celery_config import app as celery_app
+"""
+Django app package for project-level settings.
+"""
 
-__all__ = ('celery_config',)
+__all__ = ()

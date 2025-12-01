@@ -113,52 +113,27 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
 
-  worker:
+  django_q:
     build: .
-    working_dir: /app
+    container_name: django_q
+    command: >
+      sh -c "
+        python wait_for_db.py &&
+        python manage.py migrate --noinput &&
+        python manage.py qcluster
+      "
     volumes:
       - .:/app
-      - /etc/localtime:/etc/localtime:ro
-    container_name: celery_worker
-    restart: always
     depends_on:
+      - db
       - redis
     environment:
-      TZ: Europe/Moscow
-      LOGIN_MY_SKLAD: ${LOGIN_MY_SKLAD}
-      PASS_MY_SKLAD: ${PASS_MY_SKLAD}
-    command: ["celery", "-A", "django_app.celery_config", "worker", "--loglevel=info", "--pidfile=", "--concurrency=8"]
-
-  beat:
-    build: .
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /etc/localtime:/etc/localtime:ro
-    container_name: celery_beat
-    restart: always
-    depends_on:
-      - redis
-    environment:
-      TZ: Europe/Moscow
-    command: [
-      "celery",
-      "-A", "django_app.celery_config",
-      "beat",
-      "--loglevel=info",
-      "--pidfile=",
-      "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"
-    ]
-
-  flower:
-    image: mher/flower:2.0.0
-    container_name: celery_flower
-    ports:
-      - "5555:5555"
-    command: [ "celery", "--broker=redis://redis:6379/0", "flower", "--port=5555" ]
-    depends_on:
-      - redis
-      - worker
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /app
 
 volumes:
   pgdata:

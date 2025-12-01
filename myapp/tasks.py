@@ -1,4 +1,3 @@
-from celery import shared_task
 import asyncio
 
 from parsers.wildberies import (get_nmids, get_stocks_data_2_weeks, get_stock_age_by_period,
@@ -18,7 +17,6 @@ from context_logger import ContextLogger
 logger = ContextLogger(logging.getLogger("myapp"))
 
 
-@shared_task
 @with_task_context("get_time_str")
 def get_time_str_task():
     logger.info("🟢 Тест задача")
@@ -27,7 +25,6 @@ def get_time_str_task():
     logger.info(f"Конец задачи {a}")
 
 
-@shared_task
 @with_task_context("delete_report")
 def delete_report_task():
     logger.info("🟢 Удаляем отчеты заказов из ЛК WB")
@@ -36,7 +33,6 @@ def delete_report_task():
     logger.info(f"Удаление отчетов из ЛК WB завершено")
 
 
-@shared_task
 @with_task_context("load_to_db_report")
 def load_to_db_report_task():
     logger.info("🟢 Запускаем загрузку отчетов заказов из ЛК WB в БД")
@@ -44,7 +40,6 @@ def load_to_db_report_task():
     logger.info(f"Загрузка в БД завершена")
 
 
-@shared_task
 @with_task_context("download_orders_from_wb_lk")
 def download_orders_from_wb_lk_task():
     logger.info("🟢 Запускаем скачивание отчетов заказов в ЛК wb")
@@ -52,7 +47,6 @@ def download_orders_from_wb_lk_task():
     logger.info(f"Скачивание завершено")
 
 
-@shared_task
 @with_task_context("get_orders_from_wb_lk")
 def get_orders_from_wb_lk_task():
     logger.info("🟢 Запускаем генерацию отчетов заказов в ЛК wb")
@@ -60,7 +54,6 @@ def get_orders_from_wb_lk_task():
     logger.info(f"Генерация завершена")
 
 
-@shared_task
 @with_task_context("update_google_table_mysklad")
 def update_google_table_mysklad_task():
     logger.info("🟢 Обновляем в Мой склад google")
@@ -68,7 +61,6 @@ def update_google_table_mysklad_task():
     logger.info("Мой склад google обновлена")
 
 
-@shared_task
 @with_task_context("get_and_save_mysklad_data")
 def get_and_save_mysklad_data_task():
     logger.info("🟢 Обновляем в БД Мой склад")
@@ -76,7 +68,6 @@ def get_and_save_mysklad_data_task():
     logger.info("Мой склад в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_region_sales")
 def get_region_sales_task():
     logger.info("🟢 Обновляем ПРОДАЖИ регион в БД")
@@ -84,7 +75,6 @@ def get_region_sales_task():
     logger.info("ПРОДАЖИ регион в БД обновлены")
 
 
-@shared_task
 @with_task_context("make_and_get_save_report")
 def make_and_get_save_report_task():
     logger.info("🟢 Обновляем ХРАНЕНИЕ отчет в БД")
@@ -92,7 +82,6 @@ def make_and_get_save_report_task():
     logger.info("ХРАНЕНИЕ отчет в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_fin_report")
 def get_fin_report_task():
     logger.info("🟢 Обновляем ФИН отчеты в БД")
@@ -100,7 +89,6 @@ def get_fin_report_task():
     logger.info("ФИН отчеты в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_advs_stat")
 def get_advs_stat_task():
     logger.info("🟢 Обновляем рекламнyю СТАТУ в БД")
@@ -108,7 +96,6 @@ def get_advs_stat_task():
     logger.info("Рекламная СТАТА в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_advs")
 def get_advs_task():
     logger.info("🟢 Обновляем рекламы в БД")
@@ -116,7 +103,6 @@ def get_advs_task():
     logger.info("Рекламы в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_stat_products_task")
 def get_stat_products_task():
     logger.info("🟢 Обновляем стату по товарам в БД")
@@ -124,7 +110,6 @@ def get_stat_products_task():
     logger.info("Стата по товарам в БД обновлены")
 
 
-@shared_task
 @with_task_context("get_stock_age_by_period_task")
 def get_stock_age_by_period_task():
     logger.info("🟢 Получаем время нахождения товара на складах за пероиды")
@@ -132,7 +117,6 @@ def get_stock_age_by_period_task():
     logger.info("Время нахождения товара на складах за пероиды получено")
 
 
-@shared_task
 @with_task_context("get_nmids_to_db")
 def get_nmids_to_db():
     logger.info("🟢 Обновляем таблицу со всеми артикулами в бд")
@@ -140,7 +124,6 @@ def get_nmids_to_db():
     logger.info("Таблица со всеми артикулами обновлена")
 
 
-@shared_task
 @with_task_context("get_stocks_to_db")
 def get_stocks_to_db():
     logger.info("🟢 Обновляем таблицу с остатками товаров на складах в бд")
@@ -148,7 +131,6 @@ def get_stocks_to_db():
     logger.info("Таблица с остатками товаров на складах обновлена")
 
 
-@shared_task
 @with_task_context("upload_dimensions_to_google_task")
 def upload_dimensions_to_google_task():
     logger.info("🟢 Загрузка dimensions в гугл табл")
@@ -156,7 +138,6 @@ def upload_dimensions_to_google_task():
     logger.info("Dimensions в гугл табл ЗАГРУЖЕНО")
 
 
-@shared_task
 @with_task_context("upload_advcost_to_google_task")
 def upload_advcost_to_google_task():
     logger.info("🟢 Загрузка advcost в гугл табл")
@@ -164,14 +145,12 @@ def upload_advcost_to_google_task():
     logger.info("Advcost в гугл табл ЗАГРУЖЕНО")
 
 
-@shared_task
 @with_task_context("upload_salesreport_to_google_task")
 def upload_salesreport_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка salesreport в гугл табл. Mode: {mode}")
     asyncio.run(upload_salesreport_to_google(mode))
     logger.info(f"Salesreport в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
-@shared_task
 @with_task_context("upload_products_orders_to_google_task")
 def upload_products_orders_to_google_task():
     logger.info("🟢 Загрузка products_stat в гугл табл")
@@ -179,7 +158,6 @@ def upload_products_orders_to_google_task():
     logger.info("Products_stat в гугл табл ЗАГРУЖЕНО")
 
 
-@shared_task
 @with_task_context("upload_fin_report_to_google_task")
 def upload_fin_report_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка fin_report в гугл табл. Mode: {mode}")
@@ -187,21 +165,18 @@ def upload_fin_report_to_google_task(mode="Dima"):
     logger.info(f"Fin_report в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 
-@shared_task
 @with_task_context("upload_save_data_to_google_task")
 def upload_save_data_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка save_data в гугл табл. Mode: {mode}")
     asyncio.run(upload_save_data_to_google(mode))
     logger.info(f"Save_data в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
-@shared_task
 @with_task_context("upload_ostatki_to_google_task")
 def upload_ostatki_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка ostatki в гугл табл. Mode: {mode}")
     asyncio.run(upload_ostatki_to_google(mode))
     logger.info(f"Ostatki в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
-@shared_task
 @with_task_context("upload_advconversion_to_google_task")
 def upload_advconversion_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка advconconversion в гугл табл. Mode: {mode}")

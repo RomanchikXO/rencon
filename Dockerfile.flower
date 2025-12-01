@@ -1,8 +1,0 @@
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Устанавливаем Flower
-RUN pip install --no-cache-dir flower
-
-# CMD не ставим, используем command в docker-compose.yml
