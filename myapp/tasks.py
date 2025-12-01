@@ -120,14 +120,25 @@ def get_stock_age_by_period_task():
 @with_task_context("get_nmids_to_db")
 def get_nmids_to_db():
     logger.info("🟢 Обновляем таблицу со всеми артикулами в бд")
-    asyncio.run(get_nmids())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_nmids())
+    finally:
+        loop.close()
+
     logger.info("Таблица со всеми артикулами обновлена")
 
 
 @with_task_context("get_stocks_to_db")
 def get_stocks_to_db():
     logger.info("🟢 Обновляем таблицу с остатками товаров на складах в бд")
-    asyncio.run(get_stocks_data_2_weeks())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_stocks_data_2_weeks())
+    finally:
+        loop.close()
     logger.info("Таблица с остатками товаров на складах обновлена")
 
 
