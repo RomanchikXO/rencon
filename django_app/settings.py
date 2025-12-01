@@ -71,7 +71,7 @@ Q_CLUSTER = {
     'name': 'pearhome',
     'workers': 8,
     'recycle': 500,
-    'timeout': 60,
+    'timeout': 1800, # задача может работать максимум 30 минут
     'queue_limit': 50,
     'bulk': 10,
     # Используем Redis как брокер заданий (контейнер redis из docker-compose)
