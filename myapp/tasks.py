@@ -28,92 +28,182 @@ def get_time_str_task():
 @with_task_context("delete_report")
 def delete_report_task():
     logger.info("🟢 Удаляем отчеты заказов из ЛК WB")
-    from asgiref.sync import async_to_sync
-    async_to_sync(delete_report)()
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(delete_report())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Удаление отчетов из ЛК WB завершено")
 
 
 @with_task_context("load_to_db_report")
 def load_to_db_report_task():
     logger.info("🟢 Запускаем загрузку отчетов заказов из ЛК WB в БД")
-    asyncio.run(load_to_db_report())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(load_to_db_report())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Загрузка в БД завершена")
 
 
 @with_task_context("download_orders_from_wb_lk")
 def download_orders_from_wb_lk_task():
     logger.info("🟢 Запускаем скачивание отчетов заказов в ЛК wb")
-    asyncio.run(download_orders_from_wb_lk())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(download_orders_from_wb_lk())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Скачивание завершено")
 
 
 @with_task_context("get_orders_from_wb_lk")
 def get_orders_from_wb_lk_task():
     logger.info("🟢 Запускаем генерацию отчетов заказов в ЛК wb")
-    asyncio.run(get_orders_from_wb_lk())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_orders_from_wb_lk())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Генерация завершена")
 
 
 @with_task_context("update_google_table_mysklad")
 def update_google_table_mysklad_task():
     logger.info("🟢 Обновляем в Мой склад google")
-    asyncio.run(update_google_table_mysklad())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(update_google_table_mysklad())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Мой склад google обновлена")
 
 
 @with_task_context("get_and_save_mysklad_data")
 def get_and_save_mysklad_data_task():
     logger.info("🟢 Обновляем в БД Мой склад")
-    asyncio.run(get_and_save_mysklad_data())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_and_save_mysklad_data())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Мой склад в БД обновлены")
 
 
 @with_task_context("get_region_sales")
 def get_region_sales_task():
     logger.info("🟢 Обновляем ПРОДАЖИ регион в БД")
-    asyncio.run(get_region_sales())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_region_sales())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("ПРОДАЖИ регион в БД обновлены")
 
 
 @with_task_context("make_and_get_save_report")
 def make_and_get_save_report_task():
     logger.info("🟢 Обновляем ХРАНЕНИЕ отчет в БД")
-    asyncio.run(make_and_get_save_report())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(make_and_get_save_report())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("ХРАНЕНИЕ отчет в БД обновлены")
 
 
 @with_task_context("get_fin_report")
 def get_fin_report_task():
     logger.info("🟢 Обновляем ФИН отчеты в БД")
-    asyncio.run(get_fin_report())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_fin_report())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("ФИН отчеты в БД обновлены")
 
 
 @with_task_context("get_advs_stat")
 def get_advs_stat_task():
     logger.info("🟢 Обновляем рекламнyю СТАТУ в БД")
-    asyncio.run(get_advs_stat())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_advs_stat())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Рекламная СТАТА в БД обновлены")
 
 
 @with_task_context("get_advs")
 def get_advs_task():
     logger.info("🟢 Обновляем рекламы в БД")
-    asyncio.run(get_advs())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_advs())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Рекламы в БД обновлены")
 
 
 @with_task_context("get_stat_products_task")
 def get_stat_products_task():
     logger.info("🟢 Обновляем стату по товарам в БД")
-    asyncio.run(get_stat_products())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_stat_products())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Стата по товарам в БД обновлены")
 
 
 @with_task_context("get_stock_age_by_period_task")
 def get_stock_age_by_period_task():
     logger.info("🟢 Получаем время нахождения товара на складах за пероиды")
-    asyncio.run(get_stock_age_by_period())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(get_stock_age_by_period())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Время нахождения товара на складах за пероиды получено")
 
 
@@ -124,6 +214,8 @@ def get_nmids_to_db():
     try:
         asyncio.set_event_loop(loop)
         loop.run_until_complete(get_nmids())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
     finally:
         loop.close()
 
@@ -137,6 +229,8 @@ def get_stocks_to_db():
     try:
         asyncio.set_event_loop(loop)
         loop.run_until_complete(get_stocks_data_2_weeks())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
     finally:
         loop.close()
     logger.info("Таблица с остатками товаров на складах обновлена")
@@ -145,51 +239,107 @@ def get_stocks_to_db():
 @with_task_context("upload_dimensions_to_google_task")
 def upload_dimensions_to_google_task():
     logger.info("🟢 Загрузка dimensions в гугл табл")
-    asyncio.run(upload_dimensions_to_google())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_dimensions_to_google())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Dimensions в гугл табл ЗАГРУЖЕНО")
 
 
 @with_task_context("upload_advcost_to_google_task")
 def upload_advcost_to_google_task():
     logger.info("🟢 Загрузка advcost в гугл табл")
-    asyncio.run(upload_advcost_to_google())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_advcost_to_google())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Advcost в гугл табл ЗАГРУЖЕНО")
 
 
 @with_task_context("upload_salesreport_to_google_task")
 def upload_salesreport_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка salesreport в гугл табл. Mode: {mode}")
-    asyncio.run(upload_salesreport_to_google(mode))
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_salesreport_to_google(mode))
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Salesreport в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_products_orders_to_google_task")
 def upload_products_orders_to_google_task():
     logger.info("🟢 Загрузка products_stat в гугл табл")
-    asyncio.run(upload_products_orders_to_google())
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_products_orders_to_google())
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info("Products_stat в гугл табл ЗАГРУЖЕНО")
 
 
 @with_task_context("upload_fin_report_to_google_task")
 def upload_fin_report_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка fin_report в гугл табл. Mode: {mode}")
-    asyncio.run(upload_fin_report_to_google(mode))
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_fin_report_to_google(mode))
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Fin_report в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 
 @with_task_context("upload_save_data_to_google_task")
 def upload_save_data_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка save_data в гугл табл. Mode: {mode}")
-    asyncio.run(upload_save_data_to_google(mode))
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_save_data_to_google(mode))
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Save_data в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_ostatki_to_google_task")
 def upload_ostatki_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка ostatki в гугл табл. Mode: {mode}")
-    asyncio.run(upload_ostatki_to_google(mode))
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_ostatki_to_google(mode))
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Ostatki в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_advconversion_to_google_task")
 def upload_advconversion_to_google_task(mode="Dima"):
     logger.info(f"🟢 Загрузка advconconversion в гугл табл. Mode: {mode}")
-    asyncio.run(upload_advconversion_to_google(mode))
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(upload_advconversion_to_google(mode))
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+    finally:
+        loop.close()
     logger.info(f"Advconconversion в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
