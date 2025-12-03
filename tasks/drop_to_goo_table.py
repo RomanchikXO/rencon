@@ -106,7 +106,9 @@ async def get_last_week_sunday() -> str:
 
 
 @with_db_connection
-async def upload_advconversion_to_google(mode):
+async def upload_advconversion_to_google(**kwargs):
+    mode = kwargs.get("mode")
+    inns = kwargs.get("inns")  # List[Union[str, int]]
     if mode == "Dima":
         url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
     elif mode == "Anna":
@@ -116,10 +118,19 @@ async def upload_advconversion_to_google(mode):
 
     sloi = await get_sloy()
 
-    query_inns = select(
-        wblk_table.c.inn,
-        wblk_table.c.name
-    )
+    if inns:
+        query_inns = (
+            select(
+                wblk_table.c.inn,
+                wblk_table.c.name
+            )
+            .where(wblk_table.c.inn.in_(inns))
+        )
+    else:
+        query_inns = select(
+            wblk_table.c.inn,
+            wblk_table.c.name
+        )
     rows = await database.fetch_all(query_inns)
     inns = {int(row["inn"]): row["name"] for row in rows}
 
@@ -223,7 +234,8 @@ async def upload_advconversion_to_google(mode):
 
 
 @with_db_connection
-async def upload_advcost_to_google():
+async def upload_advcost_to_google(**kwargs):
+    inns = kwargs.get("inns")
     url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1726292074#gid=1726292074"
     name = "AdvCost"
 
@@ -231,11 +243,14 @@ async def upload_advcost_to_google():
 
     date_from_str = await get_first_day_last_month()
 
-    query_inns = select(
-        wblk_table.c.inn
-    )
-    rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    if inns:
+        [int(row) for row in inns]
+    else:
+        query_inns = select(
+            wblk_table.c.inn
+        )
+        rows = await database.fetch_all(query_inns)
+        inns = [int(row["inn"]) for row in rows]
 
     payloads = [
         ProductsStatRequest(inn=inn, date_from=date_from_str)
@@ -288,7 +303,9 @@ async def upload_advcost_to_google():
 
 
 @with_db_connection
-async def upload_salesreport_to_google(mode):
+async def upload_salesreport_to_google(**kwargs):
+    mode = kwargs.get("mode")
+    inns = kwargs.get("inns") # List[Union[str, int]]
     if mode == "Dima":
         url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=240040532#gid=240040532"
     elif mode == "Anna":
@@ -297,10 +314,19 @@ async def upload_salesreport_to_google(mode):
 
     sloi = await get_sloy()
 
-    query_inns = select(
-        wblk_table.c.inn,
-        wblk_table.c.name
-    )
+    if inns:
+        query_inns = (
+            select(
+                wblk_table.c.inn,
+                wblk_table.c.name
+            )
+            .where(wblk_table.c.inn.in_(inns))
+        )
+    else:
+        query_inns = select(
+            wblk_table.c.inn,
+            wblk_table.c.name
+        )
     rows = await database.fetch_all(query_inns)
     inns = {int(row["inn"]): row["name"] for row in rows}
 
@@ -397,7 +423,9 @@ async def upload_salesreport_to_google(mode):
             logger.error(f"Ошибка загрузки salesreport в таблицу для {mode}: {e}")
 
 @with_db_connection
-async def upload_ostatki_to_google(mode):
+async def upload_ostatki_to_google(**kwargs):
+    mode = kwargs.get("mode")
+    inns = kwargs.get("inns") # List[Union[str, int]]
     if mode == "Dima":
         url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=177198408#gid=177198408"
     elif mode == "Anna":
@@ -406,10 +434,19 @@ async def upload_ostatki_to_google(mode):
 
     sloi = await get_sloy()
 
-    query_inns = select(
-        wblk_table.c.inn,
-        wblk_table.c.name
-    )
+    if inns:
+        query_inns = (
+            select(
+                wblk_table.c.inn,
+                wblk_table.c.name
+            )
+            .where(wblk_table.c.inn.in_(inns))
+        )
+    else:
+        query_inns = select(
+            wblk_table.c.inn,
+            wblk_table.c.name
+        )
     rows = await database.fetch_all(query_inns)
     inns = {int(row["inn"]): row["name"] for row in rows}
 
@@ -503,7 +540,8 @@ async def upload_ostatki_to_google(mode):
 
 
 @with_db_connection
-async def upload_products_orders_to_google():
+async def upload_products_orders_to_google(**kwargs):
+    inns = kwargs.get("inns") # List[Union[str, int]]
     url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1628086389#gid=1628086389"
     name = "ProductsStat"
 
@@ -511,11 +549,14 @@ async def upload_products_orders_to_google():
 
     date_from_str = await get_first_day_last_month()
 
-    query_inns = select(
-        wblk_table.c.inn
-    )
-    rows = await database.fetch_all(query_inns)
-    inns = [int(row["inn"]) for row in rows]
+    if inns:
+        inns =[int(row) for row in inns]
+    else:
+        query_inns = select(
+            wblk_table.c.inn
+        )
+        rows = await database.fetch_all(query_inns)
+        inns = [int(row["inn"]) for row in rows]
 
     payloads = [
         ProductsStatRequest(inn=inn, date_from=date_from_str)
@@ -570,7 +611,9 @@ async def upload_products_orders_to_google():
 
 
 @with_db_connection
-async def upload_fin_report_to_google(mode):
+async def upload_fin_report_to_google(**kwargs):
+    mode = kwargs.get("mode")
+    inns = kwargs.get("inns") # List[Union[str, int]]
     if mode == "Dima":
         url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1889074269#gid=1889074269"
     elif mode == "Anna":
@@ -579,10 +622,19 @@ async def upload_fin_report_to_google(mode):
 
     sloi = await get_sloy()
 
-    query_inns = select(
-        wblk_table.c.inn,
-        wblk_table.c.name
-    )
+    if inns:
+        query_inns = (
+            select(
+                wblk_table.c.inn,
+                wblk_table.c.name
+            )
+            .where(wblk_table.c.inn.in_(inns))
+        )
+    else:
+        query_inns = select(
+            wblk_table.c.inn,
+            wblk_table.c.name
+        )
     rows = await database.fetch_all(query_inns)
     inns = {int(row["inn"]): row["name"] for row in rows}
 
@@ -739,7 +791,9 @@ async def upload_fin_report_to_google(mode):
 
 
 @with_db_connection
-async def upload_save_data_to_google(mode):
+async def upload_save_data_to_google(**kwargs):
+    mode = kwargs.get("mode")
+    inns = kwargs.get("inns") # List[Union[str, int]]
     if mode == "Dima":
         url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=711193990#gid=711193990"
     elif mode == "Anna":
@@ -749,10 +803,19 @@ async def upload_save_data_to_google(mode):
     sloi = await get_sloy()
 
     try:
-        query_inns = select(
-            wblk_table.c.inn,
-            wblk_table.c.name
-        )
+        if inns:
+            query_inns = (
+                select(
+                    wblk_table.c.inn,
+                    wblk_table.c.name
+                )
+                .where(wblk_table.c.inn.in_(inns))
+            )
+        else:
+            query_inns = select(
+                wblk_table.c.inn,
+                wblk_table.c.name
+            )
         rows = await database.fetch_all(query_inns)
         inns = {int(row["inn"]): row["name"] for row in rows}
     except Exception as e:

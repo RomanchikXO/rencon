@@ -251,12 +251,12 @@ def upload_dimensions_to_google_task():
 
 
 @with_task_context("upload_advcost_to_google_task")
-def upload_advcost_to_google_task():
+def upload_advcost_to_google_task(**kwargs):
     logger.info("🟢 Загрузка advcost в гугл табл")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_advcost_to_google())
+        loop.run_until_complete(upload_advcost_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -265,12 +265,13 @@ def upload_advcost_to_google_task():
 
 
 @with_task_context("upload_salesreport_to_google_task")
-def upload_salesreport_to_google_task(mode="Dima"):
+def upload_salesreport_to_google_task(**kwargs):
+    mode = kwargs.get("mode")
     logger.info(f"🟢 Загрузка salesreport в гугл табл. Mode: {mode}")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_salesreport_to_google(mode))
+        loop.run_until_complete(upload_salesreport_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -278,12 +279,12 @@ def upload_salesreport_to_google_task(mode="Dima"):
     logger.info(f"Salesreport в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_products_orders_to_google_task")
-def upload_products_orders_to_google_task():
+def upload_products_orders_to_google_task(**kwargs):
     logger.info("🟢 Загрузка products_stat в гугл табл")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_products_orders_to_google())
+        loop.run_until_complete(upload_products_orders_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -292,12 +293,13 @@ def upload_products_orders_to_google_task():
 
 
 @with_task_context("upload_fin_report_to_google_task")
-def upload_fin_report_to_google_task(mode="Dima"):
+def upload_fin_report_to_google_task(**kwargs):
+    mode = kwargs.get("mode")
     logger.info(f"🟢 Загрузка fin_report в гугл табл. Mode: {mode}")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_fin_report_to_google(mode))
+        loop.run_until_complete(upload_fin_report_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -319,12 +321,13 @@ def upload_save_data_to_google_task(mode="Dima"):
     logger.info(f"Save_data в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_ostatki_to_google_task")
-def upload_ostatki_to_google_task(mode="Dima"):
+def upload_ostatki_to_google_task(**kwargs):
+    mode = kwargs.get("mode")
     logger.info(f"🟢 Загрузка ostatki в гугл табл. Mode: {mode}")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_ostatki_to_google(mode))
+        loop.run_until_complete(upload_ostatki_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -332,12 +335,13 @@ def upload_ostatki_to_google_task(mode="Dima"):
     logger.info(f"Ostatki в гугл табл ЗАГРУЖЕНО. Mode: {mode}")
 
 @with_task_context("upload_advconversion_to_google_task")
-def upload_advconversion_to_google_task(mode="Dima"):
+def upload_advconversion_to_google_task(**kwargs):
+    mode = kwargs.get("mode")
     logger.info(f"🟢 Загрузка advconconversion в гугл табл. Mode: {mode}")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_advconversion_to_google(mode))
+        loop.run_until_complete(upload_advconversion_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
