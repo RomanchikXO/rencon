@@ -237,12 +237,12 @@ def get_stocks_to_db():
 
 
 @with_task_context("upload_dimensions_to_google_task")
-def upload_dimensions_to_google_task():
+def upload_dimensions_to_google_task(**kwargs):
     logger.info("🟢 Загрузка dimensions в гугл табл")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_dimensions_to_google())
+        loop.run_until_complete(upload_dimensions_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:
@@ -308,12 +308,13 @@ def upload_fin_report_to_google_task(**kwargs):
 
 
 @with_task_context("upload_save_data_to_google_task")
-def upload_save_data_to_google_task(mode="Dima"):
+def upload_save_data_to_google_task(**kwargs):
+    mode = kwargs.get("mode")
     logger.info(f"🟢 Загрузка save_data в гугл табл. Mode: {mode}")
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(upload_save_data_to_google(mode))
+        loop.run_until_complete(upload_save_data_to_google(**kwargs))
     except Exception as e:
         logger.error(f"Ошибка: {e}")
     finally:

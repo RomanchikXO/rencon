@@ -32,8 +32,8 @@ async def get_sloy() -> dict:
     return response
 
 @with_db_connection
-async def upload_dimensions_to_google():
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=968779387#gid=968779387"
+async def upload_dimensions_to_google(**kwargs):
+    url = kwargs.get("url")
     name = "Dimensions"
     result = await get_dimensions(token=BEARER)
 
@@ -109,10 +109,7 @@ async def get_last_week_sunday() -> str:
 async def upload_advconversion_to_google(**kwargs):
     mode = kwargs.get("mode")
     inns = kwargs.get("inns")  # List[Union[str, int]]
-    if mode == "Dima":
-        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=661019855#gid=661019855"
-    elif mode == "Anna":
-        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    url = kwargs.get("url")
 
     name_list = "AdvConversion"
 
@@ -236,7 +233,7 @@ async def upload_advconversion_to_google(**kwargs):
 @with_db_connection
 async def upload_advcost_to_google(**kwargs):
     inns = kwargs.get("inns")
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1726292074#gid=1726292074"
+    url = kwargs.get("url")
     name = "AdvCost"
 
     sloi = await get_sloy()
@@ -306,10 +303,8 @@ async def upload_advcost_to_google(**kwargs):
 async def upload_salesreport_to_google(**kwargs):
     mode = kwargs.get("mode")
     inns = kwargs.get("inns") # List[Union[str, int]]
-    if mode == "Dima":
-        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=240040532#gid=240040532"
-    elif mode == "Anna":
-        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    url = kwargs.get("url")
+
     name_list = "SalesReport"
 
     sloi = await get_sloy()
@@ -426,10 +421,8 @@ async def upload_salesreport_to_google(**kwargs):
 async def upload_ostatki_to_google(**kwargs):
     mode = kwargs.get("mode")
     inns = kwargs.get("inns") # List[Union[str, int]]
-    if mode == "Dima":
-        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=177198408#gid=177198408"
-    elif mode == "Anna":
-        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    url = kwargs.get("url")
+
     name_list = "Ostatki"
 
     sloi = await get_sloy()
@@ -542,7 +535,8 @@ async def upload_ostatki_to_google(**kwargs):
 @with_db_connection
 async def upload_products_orders_to_google(**kwargs):
     inns = kwargs.get("inns") # List[Union[str, int]]
-    url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1628086389#gid=1628086389"
+    url = kwargs.get("url")
+
     name = "ProductsStat"
 
     sloi = await get_sloy()
@@ -614,10 +608,8 @@ async def upload_products_orders_to_google(**kwargs):
 async def upload_fin_report_to_google(**kwargs):
     mode = kwargs.get("mode")
     inns = kwargs.get("inns") # List[Union[str, int]]
-    if mode == "Dima":
-        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=1889074269#gid=1889074269"
-    elif mode == "Anna":
-        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    url = kwargs.get("url")
+
     name_list = "FinancialData"
 
     sloi = await get_sloy()
@@ -794,10 +786,8 @@ async def upload_fin_report_to_google(**kwargs):
 async def upload_save_data_to_google(**kwargs):
     mode = kwargs.get("mode")
     inns = kwargs.get("inns") # List[Union[str, int]]
-    if mode == "Dima":
-        url = "https://docs.google.com/spreadsheets/d/1djlCANhJ5eOWsHB95Gh7Duz0YWlF6cOT035dYsqOZQ4/edit?gid=711193990#gid=711193990"
-    elif mode == "Anna":
-        url = "https://docs.google.com/spreadsheets/d/1uxHnuWtUbg5MNEvUzuxUO8VoVG6Th-TE9MwgNotGDH0/edit?gid=0#gid=0"
+    url = kwargs.get("url")
+
     name_list = "SavesData"
 
     sloi = await get_sloy()
